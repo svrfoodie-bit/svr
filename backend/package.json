@@ -1,0 +1,45 @@
+{
+  "name": "svr-cashew-backend",
+  "version": "1.0.0",
+  "description": "SVR Food Production - Cashew Processing Factory Management System Backend",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --coverage",
+    "setup-db": "node create-tables.js",
+    "migrate:daily-work-bonus": "node migrate-daily-work-bonus.js",
+    "seed": "node seed-database.js",
+    "setup": "npm run setup-db && npm run seed"
+  },
+  "keywords": [
+    "cashew",
+    "factory",
+    "management"
+  ],
+  "author": "SVR Food Production",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "exceljs": "^4.4.0",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.3.2",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.6.5",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.7",
+    "pdfkit": "^0.14.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3"
+  }
+}
