@@ -117,7 +117,7 @@ const seedDatabase = async () => {
 
     // ==================== FINISHED GOODS STOCK ====================
     console.log('📊 Creating finished goods stock...');
-    const batches_data = await promisePool.query('SELECT id FROM processing_batches WHERE status = "Completed"');
+    const batches_data = await promisePool.query("SELECT id FROM processing_batches WHERE status = 'Completed'");
     
     for (let i = 0; i < batches_data[0].length; i++) {
       const grades = ['LWP', 'HLP', 'BBL'];
