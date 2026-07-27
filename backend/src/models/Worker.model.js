@@ -54,10 +54,14 @@ class Worker {
     return rows;
   }
 
-  static async getActive() {
-    const [rows] = await promisePool.query('SELECT * FROM workers WHERE status = "Active" ORDER BY name ASC');
-    return rows;
-  }
+static async getTotalCount() {
+  const [rows] = await promisePool.query(
+    'SELECT COUNT(*) AS count FROM workers WHERE status = ?',
+    ['Active']
+  );
+
+  return rows[0]?.count || 0;
+}
 
   static async getById(id) {
     const [rows] = await promisePool.query('SELECT * FROM workers WHERE id = ?', [id]);
