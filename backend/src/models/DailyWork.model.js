@@ -1,33 +1,6 @@
 const { promisePool } = require('../config/database');
 
 class DailyWork {
-  static async migrate() {
-    try {
-      await promisePool.query(`
-        ALTER TABLE daily_work
-        ADD COLUMN IF NOT EXISTS assignedQuantity DECIMAL(10, 2) NULL AFTER workType,
-        ADD COLUMN IF NOT EXISTS status ENUM('Pending', 'In Progress', 'Completed') DEFAULT 'In Progress' AFTER bonusEligible
-      `);
-    } catch (err) {
-      try {
-        await promisePool.query(`
-          ALTER TABLE daily_work
-          ADD COLUMN assignedQuantity DECIMAL(10, 2) NULL AFTER workType
-        `);
-      } catch {
-        // Column may already exist or DB may not support this ALTER syntax.
-      }
-      try {
-        await promisePool.query(`
-          ALTER TABLE daily_work
-          ADD COLUMN status ENUM('Pending', 'In Progress', 'Completed') DEFAULT 'In Progress' AFTER bonusEligible
-        `);
-      } catch {
-        // Column may already exist or DB may not support this ALTER syntax.
-      }
-    }
-  }
-
   static getStatusFromQuantities(assignedQuantity, completedQuantity, fallbackStatus) {
     if (completedQuantity <= 0) return 'Pending';
     if (assignedQuantity > 0 && completedQuantity >= assignedQuantity) return 'Completed';

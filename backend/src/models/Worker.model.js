@@ -63,6 +63,14 @@ static async getTotalCount() {
   return rows[0]?.count || 0;
 }
 
+  static async getActive() {
+    const [rows] = await promisePool.query(
+      'SELECT * FROM workers WHERE status = ? ORDER BY name ASC',
+      ['Active']
+    );
+    return rows;
+  }
+
   static async getById(id) {
     const [rows] = await promisePool.query('SELECT * FROM workers WHERE id = ?', [id]);
     return rows[0] || null;
@@ -119,11 +127,6 @@ static async getTotalCount() {
 
     const [result] = await promisePool.query('DELETE FROM workers WHERE id = ?', [id]);
     return result.affectedRows > 0;
-  }
-
-  static async getTotalCount() {
-    const [rows] = await promisePool.query('SELECT COUNT(*) as count FROM workers WHERE status = "Active"');
-    return rows[0]?.count || 0;
   }
 }
 

@@ -1,57 +1,11 @@
 const { promisePool } = require('../config/database');
 
-const DEFAULT_GRADES = [
-  { grade: 'Full Kaju', description: 'Whole kaju / full kernels', minPrice: 800, maxPrice: 1200, pricePerKg: 1000 },
-  { grade: 'Split Kaju', description: 'Split kaju pieces', minPrice: 600, maxPrice: 950, pricePerKg: 800 },
-  { grade: '4 Pieces', description: 'Kaju broken into 4 pieces', minPrice: 450, maxPrice: 750, pricePerKg: 600 },
-  { grade: '8 Pieces', description: 'Kaju broken into 8 pieces', minPrice: 300, maxPrice: 550, pricePerKg: 420 },
-  { grade: 'Chura', description: 'Small kaju bits / chura', minPrice: 150, maxPrice: 350, pricePerKg: 250 },
-];
-
-const ACTIVE_GRADES = DEFAULT_GRADES.map((item) => item.grade);
+// Only used to bias the display order of the 5 legacy generic grade names;
+// any other grade (e.g. real cashew grades like W180/W210) sorts before
+// these alphabetically since MySQL FIELD() returns 0 for unmatched values.
 const GRADE_ORDER_SQL = "'Full Kaju','Split Kaju','4 Pieces','8 Pieces','Chura'";
 
 class GradePriceList {
-  static async createTable() {
-    await promisePool.query(`
-      CREATE TABLE IF NOT EXISTS grade_prices (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        grade VARCHAR(100) NOT NULL UNIQUE,
-        description VARCHAR(255),
-        pricePerKg DECIMAL(10,2) NOT NULL DEFAULT 0,
-        minPrice DECIMAL(10,2) DEFAULT 0,
-        maxPrice DECIMAL(10,2) DEFAULT 0,
-        isActive TINYINT(1) DEFAULT 1,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )
-    `);
-
-    try {
-      await promisePool.query('ALTER TABLE grade_prices MODIFY grade VARCHAR(100) NOT NULL');
-    } catch {
-      // Column is already compatible or the DB does not need this change.
-    }
-
-    for (const grade of DEFAULT_GRADES) {
-      await promisePool.query(
-        `INSERT INTO grade_prices (grade, description, pricePerKg, minPrice, maxPrice, isActive)
-         VALUES (?, ?, ?, ?, ?, 1)
-         ON DUPLICATE KEY UPDATE
-           description = VALUES(description),
-           minPrice = VALUES(minPrice),
-           maxPrice = VALUES(maxPrice),
-           isActive = 1`,
-        [grade.grade, grade.description, grade.pricePerKg, grade.minPrice, grade.maxPrice]
-      );
-    }
-
-    await promisePool.query(
-      `UPDATE grade_prices SET isActive = 0 WHERE grade NOT IN (${ACTIVE_GRADES.map(() => '?').join(',')})`,
-      ACTIVE_GRADES
-    );
-  }
-
   static async getAll(includeInactive = false) {
     const query = includeInactive
       ? `SELECT * FROM grade_prices ORDER BY FIELD(grade, ${GRADE_ORDER_SQL}), grade`

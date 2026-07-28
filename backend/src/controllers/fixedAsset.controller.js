@@ -1,8 +1,5 @@
 const { FixedAsset } = require('../models/FixedAsset.model');
 
-// Init table on startup
-FixedAsset.createTable().catch(console.error);
-
 exports.getAll = async (req, res) => {
   try {
     const assets = await FixedAsset.getAll(req.query);

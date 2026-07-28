@@ -1,8 +1,6 @@
 const Worker = require('../models/Worker.model');
 const DailyWork = require('../models/DailyWork.model');
 
-DailyWork.migrate().catch(console.error);
-
 class WorkerController {
   async getAll(req, res, next) {
     try {

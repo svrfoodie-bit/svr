@@ -1,9 +1,6 @@
 const RawPurchase = require('../models/RawPurchase.model');
 const RawPurchasePayment = require('../models/RawPurchasePayment.model');
 
-// Add fundedByLoan columns if they don't exist
-RawPurchase.migrate().catch(console.error);
-
 const DB_TO_UI_PAYMENT_MODE = {
   UPI: 'PhonePe',
   'Bank Transfer': 'Bank',

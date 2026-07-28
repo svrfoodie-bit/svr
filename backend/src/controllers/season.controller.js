@@ -1,7 +1,5 @@
 const Season = require('../models/Season.model');
 
-Season.createTable().catch(console.error);
-
 class SeasonController {
   async getAll(req, res, next) {
     try {

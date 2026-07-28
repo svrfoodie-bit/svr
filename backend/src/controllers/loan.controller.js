@@ -3,14 +3,6 @@ const LoanPayment = require('../models/LoanPayment.model');
 const Capital = require('../models/Capital.model');
 const Expense = require('../models/Expense.model');
 
-// Ensure tables exist on first use
-const initTables = async () => {
-  await Loan.createTable();
-  await LoanPayment.createTable();
-  await Capital.createTable();
-};
-initTables().catch(console.error);
-
 // ==================== LOANS ====================
 
 exports.getAllLoans = async (req, res) => {

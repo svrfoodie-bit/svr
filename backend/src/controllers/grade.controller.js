@@ -1,7 +1,5 @@
 const GradePriceList = require('../models/GradePriceList.model');
 
-GradePriceList.createTable().catch(console.error);
-
 class GradeController {
   async getAll(req, res, next) {
     try {

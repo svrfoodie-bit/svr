@@ -9,6 +9,8 @@
     "test": "jest --coverage",
     "setup-db": "node create-tables.js",
     "migrate:daily-work-bonus": "node migrate-daily-work-bonus.js",
+    "migrate": "node scripts/migrate.js",
+    "migrate:status": "node scripts/migrate.js --status",
     "seed": "node seed-database.js",
     "setup": "npm run setup-db && npm run seed"
   },

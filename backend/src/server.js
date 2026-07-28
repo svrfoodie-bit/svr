@@ -11,13 +11,7 @@ const logger = require('./config/logger');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const schedulerService = require('./services/scheduler.service');
 const { seedDemoUsers } = require('./utils/seeder');
-const ExportTemplate = require('./models/ExportTemplate.model');
-const ExportHistory = require('./models/ExportHistory.model');
-const ExportSchedule = require('./models/ExportSchedule.model');
 const Settings = require('./models/Settings.model');
-const AutomationSettings = require('./models/AutomationSettings.model');
-const AutomationLog      = require('./models/AutomationLog.model');
-const { FixedAsset }     = require('./models/FixedAsset.model');
 
 // Initialize Express app
 const app = express();
@@ -135,23 +129,6 @@ const startServer = async () => {
     if (!dbConnected) {
       logger.error('Failed to connect to database. Exiting...');
       process.exit(1);
-    }
-
-    // Create export tables if they don't exist
-    try {
-      await ExportTemplate.createTable();
-      await ExportHistory.createTable();
-      await ExportSchedule.createTable();
-      await Settings.createTable();
-      logger.info('✅ Export and settings tables ready');
-
-      // Automation tables
-      await FixedAsset.createTable();
-      await AutomationSettings.createTable();
-      await AutomationLog.createTable();
-      logger.info('✅ Automation tables ready');
-    } catch (err) {
-      logger.warn('Export table init warning:', err.message);
     }
 
     // Seed demo users for local development if missing

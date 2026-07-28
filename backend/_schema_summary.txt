@@ -1,0 +1,516 @@
+### app_settings (rows: 1)
+  id: int(11) NOT NULL DEFAULT 1 [PRI]
+  company_info: longtext NULL DEFAULT NULL
+  payment_config: longtext NULL DEFAULT NULL
+  user_preferences: longtext NULL DEFAULT NULL
+  notification_settings: longtext NULL DEFAULT NULL
+  updated_at: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+
+### attendance (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  workerId: int(11) NOT NULL [MUL]
+  attendanceDate: date NOT NULL
+  status: enum('Present','Absent','Half Day','Leave') NULL DEFAULT 'Present'
+  hoursWorked: decimal(4,2) NULL DEFAULT 8.00
+  overtimeHours: decimal(4,2) NULL DEFAULT 0.00
+  notes: varchar(255) NULL DEFAULT NULL
+  createdBy: int(11) NULL DEFAULT 1
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  INDEXES: uq_worker_date(workerId,attendanceDate) UNIQUE
+  FKS: workerId -> workers.id
+
+### audit_logs (rows: 18)
+  id: int(11) NOT NULL auto_increment [PRI]
+  userId: int(11) NULL DEFAULT NULL [MUL]
+  userName: varchar(100) NULL DEFAULT NULL
+  userRole: varchar(50) NULL DEFAULT NULL
+  action: varchar(50) NOT NULL
+  entity: varchar(80) NOT NULL [MUL]
+  entityId: varchar(50) NULL DEFAULT NULL
+  entityLabel: varchar(255) NULL DEFAULT NULL
+  description: text NULL DEFAULT NULL
+  ipAddress: varchar(45) NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp() [MUL]
+  INDEXES: idx_createdAt(createdAt), idx_entity(entity), idx_userId(userId)
+
+### automation_logs (rows: 13)
+  id: int(11) NOT NULL auto_increment [PRI]
+  jobType: enum('payment_reminder','stock_alert','depreciation','gst_compile') NOT NULL
+  status: enum('success','failed','skipped') NOT NULL
+  summary: varchar(500) NULL DEFAULT NULL
+  details: longtext NULL DEFAULT NULL
+  runAt: timestamp NOT NULL DEFAULT current_timestamp()
+
+### automation_settings (rows: 17)
+  id: int(11) NOT NULL auto_increment [PRI]
+  settingKey: varchar(100) NOT NULL [UNI]
+  settingValue: text NULL DEFAULT NULL
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  INDEXES: settingKey(settingKey) UNIQUE
+
+### capital_investments (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  capitalCode: varchar(20) NOT NULL [UNI]
+  amount: decimal(12,2) NOT NULL
+  investmentDate: date NOT NULL
+  description: varchar(200) NOT NULL
+  notes: text NULL DEFAULT NULL
+  createdBy: int(11) NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  INDEXES: capitalCode(capitalCode) UNIQUE
+
+### customers (rows: 1)
+  id: int(11) NOT NULL auto_increment [PRI]
+  customerId: varchar(50) NOT NULL [UNI]
+  name: varchar(255) NOT NULL
+  type: enum('Retail','Wholesale') NOT NULL [MUL]
+  contactNumber: varchar(20) NULL DEFAULT NULL
+  area: varchar(100) NULL DEFAULT NULL
+  email: varchar(255) NULL DEFAULT NULL
+  address: text NULL DEFAULT NULL
+  isActive: tinyint(1) NULL DEFAULT 1 [MUL]
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  isDeleted: tinyint(1) NOT NULL DEFAULT 0
+  INDEXES: customerId(customerId) UNIQUE, customerId_2(customerId), isActive(isActive), type(type)
+
+### daily_work (rows: 8)
+  id: int(11) NOT NULL auto_increment [PRI]
+  workerId: int(11) NOT NULL [MUL]
+  workDate: date NOT NULL [MUL]
+  workType: varchar(50) NULL DEFAULT NULL
+  assignedQuantity: decimal(10,2) NULL DEFAULT NULL
+  quantity: decimal(10,2) NULL DEFAULT NULL
+  rate: decimal(10,2) NULL DEFAULT NULL
+  totalAmount: decimal(12,2) NULL DEFAULT NULL
+  bonusAmount: decimal(12,2) NULL DEFAULT 0.00
+  bonusEligible: tinyint(1) NULL DEFAULT 0
+  status: enum('Pending','In Progress','Completed') NULL DEFAULT 'In Progress'
+  notes: text NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  INDEXES: workDate(workDate), workerId(workerId)
+  FKS: workerId -> workers.id
+
+### expenses (rows: 5)
+  id: int(11) NOT NULL auto_increment [PRI]
+  expenseCode: varchar(50) NULL DEFAULT NULL
+  category: varchar(100) NOT NULL [MUL]
+  description: text NULL DEFAULT NULL
+  amount: decimal(12,2) NULL DEFAULT NULL
+  paymentMode: varchar(50) NULL DEFAULT NULL
+  date: date NULL DEFAULT NULL [MUL]
+  notes: text NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  paidTo: varchar(255) NULL DEFAULT NULL
+  INDEXES: category(category), date(date)
+
+### export_history (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  type: enum('EMAIL','SCHEDULED','MANUAL') NOT NULL [MUL]
+  module: enum('SALES','PAYMENTS','RAW_PURCHASE','JOB_WORK','EXPENSES','CUSTOMERS') NOT NULL [MUL]
+  format: enum('EXCEL','PDF') NOT NULL
+  recipients: text NULL DEFAULT NULL
+  status: enum('SUCCESS','FAILED','IN_PROGRESS') NULL DEFAULT 'IN_PROGRESS' [MUL]
+  record_count: int(11) NULL DEFAULT 0
+  file_size: int(11) NULL DEFAULT 0
+  file_path: varchar(500) NULL DEFAULT NULL
+  error_message: text NULL DEFAULT NULL
+  executed_by: varchar(100) NULL DEFAULT NULL
+  user_id: int(11) NULL DEFAULT NULL [MUL]
+  created_at: timestamp NOT NULL DEFAULT current_timestamp() [MUL]
+  INDEXES: idx_created_at(created_at), idx_module(module), idx_status(status), idx_type(type), idx_user_id(user_id)
+
+### export_schedules (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  name: varchar(255) NOT NULL
+  module: enum('SALES','PAYMENTS','RAW_PURCHASE','JOB_WORK','EXPENSES','CUSTOMERS') NOT NULL
+  frequency: enum('DAILY','WEEKLY','MONTHLY') NOT NULL [MUL]
+  time: time NOT NULL
+  format: enum('EXCEL','PDF') NOT NULL
+  recipients: text NOT NULL
+  template_id: int(11) NULL DEFAULT NULL [MUL]
+  status: enum('ACTIVE','PAUSED') NULL DEFAULT 'ACTIVE' [MUL]
+  last_run: timestamp NULL DEFAULT NULL
+  next_run: timestamp NULL DEFAULT NULL [MUL]
+  created_by: int(11) NULL DEFAULT NULL
+  created_at: timestamp NOT NULL DEFAULT current_timestamp()
+  updated_at: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  INDEXES: idx_frequency(frequency), idx_next_run(next_run), idx_status(status), template_id(template_id)
+  FKS: template_id -> export_templates.id
+
+### export_templates (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  name: varchar(255) NOT NULL
+  module: enum('SALES','PAYMENTS','RAW_PURCHASE','JOB_WORK','EXPENSES','CUSTOMERS') NOT NULL [MUL]
+  columns: longtext NOT NULL
+  filters: longtext NULL DEFAULT NULL
+  is_default: tinyint(1) NULL DEFAULT 0 [MUL]
+  created_by: int(11) NULL DEFAULT NULL [MUL]
+  created_at: timestamp NOT NULL DEFAULT current_timestamp()
+  updated_at: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  INDEXES: idx_created_by(created_by), idx_is_default(is_default), idx_module(module)
+
+### finished_goods_stock (rows: 8)
+  id: int(11) NOT NULL auto_increment [PRI]
+  batchId: int(11) NULL DEFAULT NULL [MUL]
+  grade: varchar(100) NOT NULL [MUL]
+  quantity: decimal(10,2) NULL DEFAULT NULL
+  dateAdded: date NULL DEFAULT NULL [MUL]
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  INDEXES: batchId(batchId), dateAdded(dateAdded), grade(grade)
+  FKS: batchId -> processing_batches.id
+
+### fixed_assets (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  assetCode: varchar(20) NOT NULL [UNI]
+  assetName: varchar(150) NOT NULL
+  assetType: enum('Machinery','Land','Building','Vehicle','Furniture','Equipment','Other') NOT NULL
+  purchaseDate: date NOT NULL
+  purchaseCost: decimal(14,2) NOT NULL
+  currentValue: decimal(14,2) NOT NULL
+  depreciationRate: decimal(5,2) NULL DEFAULT 10.00
+  lastDepreciationDate: date NULL DEFAULT NULL
+  location: varchar(200) NULL DEFAULT NULL
+  description: varchar(300) NULL DEFAULT NULL
+  status: enum('Active','Disposed','Under Maintenance') NULL DEFAULT 'Active'
+  notes: text NULL DEFAULT NULL
+  createdBy: int(11) NULL DEFAULT 1
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  INDEXES: assetCode(assetCode) UNIQUE
+
+### grade_prices (rows: 13)
+  id: int(11) NOT NULL auto_increment [PRI]
+  grade: varchar(100) NOT NULL [UNI]
+  description: varchar(255) NULL DEFAULT NULL
+  pricePerKg: decimal(10,2) NOT NULL DEFAULT 0.00
+  minPrice: decimal(10,2) NULL DEFAULT 0.00
+  maxPrice: decimal(10,2) NULL DEFAULT 0.00
+  isActive: tinyint(1) NULL DEFAULT 1
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  INDEXES: grade(grade) UNIQUE
+
+### job_work (rows: 2)
+  id: int(11) NOT NULL auto_increment [PRI]
+  jobDate: date NOT NULL
+  jobWorkerName: varchar(255) NOT NULL
+  cashewType: varchar(50) NOT NULL DEFAULT 'Premium'
+  quantitySent: decimal(10,2) NOT NULL
+  quantityReceived: decimal(10,2) NOT NULL
+  ratePerKg: decimal(10,2) NOT NULL
+  remarks: text NULL DEFAULT NULL
+  startDate: date NULL DEFAULT NULL
+  endDate: date NULL DEFAULT NULL
+  status: enum('In Progress','Completed','Cancelled') NULL DEFAULT 'In Progress' [MUL]
+  notes: text NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  INDEXES: status(status)
+
+### job_work_payments (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  jobWorkId: int(11) NOT NULL [MUL]
+  paymentDate: date NOT NULL [MUL]
+  amount: decimal(12,2) NOT NULL
+  paymentMode: enum('Cash','Cheque','Bank Transfer','UPI') NOT NULL
+  reference: varchar(100) NULL DEFAULT NULL
+  notes: text NULL DEFAULT NULL
+  createdBy: int(11) NULL DEFAULT 1
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  INDEXES: jobWorkId(jobWorkId), paymentDate(paymentDate)
+  FKS: jobWorkId -> job_work.id
+
+### leads (rows: 155)
+  id: int(11) NOT NULL auto_increment [PRI]
+  name: varchar(255) NULL DEFAULT NULL
+  phone: varchar(20) NULL DEFAULT NULL [MUL]
+  status: enum('New','Contacted','Qualified','Converted','Lost') NULL DEFAULT 'New' [MUL]
+  source: varchar(100) NULL DEFAULT NULL
+  campaignId: int(11) NULL DEFAULT NULL
+  waSent: tinyint(1) NULL DEFAULT 0
+  notes: text NULL DEFAULT NULL
+  location: varchar(255) NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  address: varchar(255) NULL DEFAULT NULL
+  category: varchar(100) NULL DEFAULT NULL
+  normalizedPhone: varchar(20) NULL DEFAULT NULL
+  INDEXES: phone(phone), status(status)
+
+### lead_campaigns (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  name: varchar(255) NULL DEFAULT NULL
+  description: text NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  template: text NULL DEFAULT NULL
+  contactIds: longtext NULL DEFAULT NULL
+  sentIds: longtext NULL DEFAULT NULL
+
+### lead_templates (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  name: varchar(255) NULL DEFAULT NULL
+  content: text NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+
+### loans (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  loanCode: varchar(20) NOT NULL [UNI]
+  loanType: enum('Bank','Hand') NOT NULL
+  lenderName: varchar(100) NOT NULL
+  lenderPhone: varchar(15) NULL DEFAULT NULL
+  principalAmount: decimal(12,2) NOT NULL
+  interestRate: decimal(5,2) NOT NULL
+  interestPaymentType: enum('Monthly','EndOfTerm') NOT NULL DEFAULT 'Monthly'
+  repaymentType: enum('EMI','Custom') NOT NULL DEFAULT 'Custom'
+  tenureMonths: int(11) NULL DEFAULT NULL
+  startDate: date NOT NULL
+  purpose: varchar(200) NULL DEFAULT NULL
+  bankAccountNo: varchar(30) NULL DEFAULT NULL
+  status: enum('Active','Closed') NOT NULL DEFAULT 'Active'
+  notes: text NULL DEFAULT NULL
+  createdBy: int(11) NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  INDEXES: loanCode(loanCode) UNIQUE
+
+### loan_payments (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  loanId: int(11) NOT NULL [MUL]
+  paymentDate: date NOT NULL
+  principalAmount: decimal(12,2) NOT NULL DEFAULT 0.00
+  interestAmount: decimal(12,2) NOT NULL DEFAULT 0.00
+  paymentMode: enum('Cash','Bank Transfer','PhonePe','Cheque') NOT NULL DEFAULT 'Cash'
+  paymentType: enum('EMI','InterestOnly','PrincipalOnly','Prepayment','FullSettlement') NOT NULL
+  notes: text NULL DEFAULT NULL
+  createdBy: int(11) NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  INDEXES: loanId(loanId)
+  FKS: loanId -> loans.id
+
+### payment_reconciliations (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  orderId: int(11) NULL DEFAULT NULL
+  expectedAmount: decimal(12,2) NULL DEFAULT NULL
+  receivedAmount: decimal(12,2) NULL DEFAULT NULL
+  reconciliationDate: date NULL DEFAULT NULL
+  remarks: text NULL DEFAULT NULL
+  status: enum('Pending','Reconciled','Mismatch') NULL DEFAULT 'Pending'
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+
+### payment_reminders (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  orderId: int(11) NULL DEFAULT NULL
+  customerId: int(11) NULL DEFAULT NULL
+  reminderDate: date NULL DEFAULT NULL
+  status: enum('Pending','Notified','Completed') NULL DEFAULT 'Pending'
+  notifiedAt: timestamp NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+
+### payroll (rows: 2)
+  id: int(11) NOT NULL auto_increment [PRI]
+  workerId: int(11) NOT NULL [MUL]
+  payrollMonth: int(11) NOT NULL
+  payrollYear: int(11) NOT NULL
+  presentDays: int(11) NULL DEFAULT 0
+  halfDays: int(11) NULL DEFAULT 0
+  absentDays: int(11) NULL DEFAULT 0
+  overtimeHours: decimal(6,2) NULL DEFAULT 0.00
+  basicSalary: decimal(10,2) NULL DEFAULT 0.00
+  overtimePay: decimal(10,2) NULL DEFAULT 0.00
+  bonus: decimal(10,2) NULL DEFAULT 0.00
+  deductions: decimal(10,2) NULL DEFAULT 0.00
+  advanceDeduction: decimal(10,2) NULL DEFAULT 0.00
+  netSalary: decimal(10,2) NULL DEFAULT 0.00
+  paymentMode: enum('Cash','UPI','Bank Transfer') NULL DEFAULT 'Cash'
+  paymentDate: date NULL DEFAULT NULL
+  status: enum('Draft','Paid') NULL DEFAULT 'Draft'
+  notes: varchar(255) NULL DEFAULT NULL
+  createdBy: int(11) NULL DEFAULT 1
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  INDEXES: uq_worker_month(workerId,payrollMonth,payrollYear) UNIQUE
+  FKS: workerId -> workers.id
+
+### processing_batches (rows: 7)
+  id: int(11) NOT NULL auto_increment [PRI]
+  batchNumber: varchar(50) NOT NULL [UNI]
+  startDate: date NULL DEFAULT NULL
+  endDate: date NULL DEFAULT NULL
+  rawInputQuantity: decimal(10,2) NULL DEFAULT NULL
+  quantity: decimal(10,2) NULL DEFAULT NULL
+  grade: varchar(100) NULL DEFAULT NULL
+  finishedGrade: varchar(100) NULL DEFAULT NULL
+  status: enum('In Progress','Completed','Cancelled') NULL DEFAULT 'In Progress' [MUL]
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  wastage: decimal(10,2) NULL DEFAULT 0.00
+  INDEXES: batchNumber(batchNumber) UNIQUE, batchNumber_2(batchNumber), status(status)
+
+### raw_purchases (rows: 4)
+  id: int(11) NOT NULL auto_increment [PRI]
+  supplierId: int(11) NOT NULL [MUL]
+  purchaseDate: date NOT NULL [MUL]
+  quantity: decimal(10,2) NOT NULL
+  ratePerUnit: decimal(10,2) NOT NULL
+  totalAmount: decimal(12,2) NOT NULL
+  grade: varchar(100) NULL DEFAULT NULL
+  moisture: decimal(5,2) NULL DEFAULT NULL
+  weight: decimal(10,2) NULL DEFAULT NULL
+  notes: text NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  fundedByLoanId: int(11) NULL DEFAULT NULL
+  fundedByLoanCode: varchar(20) NULL DEFAULT NULL
+  INDEXES: purchaseDate(purchaseDate), supplierId(supplierId)
+  FKS: supplierId -> suppliers.id
+
+### raw_purchase_payments (rows: 1)
+  id: int(11) NOT NULL auto_increment [PRI]
+  rawPurchaseId: int(11) NOT NULL [MUL]
+  paymentDate: date NOT NULL [MUL]
+  amount: decimal(12,2) NOT NULL
+  paymentMode: enum('Cash','Cheque','Bank Transfer','UPI') NOT NULL
+  reference: varchar(100) NULL DEFAULT NULL
+  notes: text NULL DEFAULT NULL
+  createdBy: int(11) NULL DEFAULT 1
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  INDEXES: paymentDate(paymentDate), rawPurchaseId(rawPurchaseId)
+  FKS: rawPurchaseId -> raw_purchases.id
+
+### sales_orders (rows: 2)
+  id: int(11) NOT NULL auto_increment [PRI]
+  salesOrderId: varchar(50) NOT NULL [UNI]
+  customerId: int(11) NOT NULL [MUL]
+  orderDate: date NULL DEFAULT NULL
+  productGrade: varchar(100) NULL DEFAULT NULL
+  quantity: decimal(10,2) NULL DEFAULT NULL
+  ratePerUnit: decimal(10,2) NULL DEFAULT NULL
+  totalAmount: decimal(12,2) NULL DEFAULT NULL
+  deliveryDate: date NULL DEFAULT NULL
+  paymentType: varchar(30) NULL DEFAULT 'Cash'
+  status: enum('Pending','Delivered','Partial','Cancelled') NULL DEFAULT 'Pending' [MUL]
+  notes: text NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  INDEXES: customerId(customerId), salesOrderId(salesOrderId) UNIQUE, salesOrderId_2(salesOrderId), status(status)
+  FKS: customerId -> customers.id
+
+### sales_payments (rows: 2)
+  id: int(11) NOT NULL auto_increment [PRI]
+  salesOrderId: int(11) NOT NULL [MUL]
+  paymentDate: date NULL DEFAULT NULL [MUL]
+  amount: decimal(12,2) NULL DEFAULT NULL
+  paymentMode: enum('Cash','Cheque','Bank Transfer','UPI') NOT NULL
+  reference: varchar(255) NULL DEFAULT NULL
+  notes: text NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  INDEXES: paymentDate(paymentDate), salesOrderId(salesOrderId)
+  FKS: salesOrderId -> sales_orders.id
+
+### seasons (rows: 0)
+  id: int(11) NOT NULL auto_increment [PRI]
+  name: varchar(100) NOT NULL
+  startDate: date NOT NULL
+  endDate: date NOT NULL
+  targetProcurementKg: decimal(12,2) NULL DEFAULT 0.00
+  targetRevenueAmount: decimal(12,2) NULL DEFAULT 0.00
+  budgetAmount: decimal(12,2) NULL DEFAULT 0.00
+  expectedWorkers: int(11) NULL DEFAULT 0
+  notes: text NULL DEFAULT NULL
+  status: enum('Planned','Active','Completed','Cancelled') NULL DEFAULT 'Planned'
+  createdBy: int(11) NULL DEFAULT 1
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+
+### stock_adjustments (rows: 4)
+  id: int(11) NOT NULL auto_increment [PRI]
+  grade: varchar(100) NULL DEFAULT NULL [MUL]
+  adjustmentType: enum('Issue','Damage') NOT NULL [MUL]
+  quantity: decimal(10,2) NULL DEFAULT NULL
+  dateAdded: date NULL DEFAULT NULL
+  reason: text NULL DEFAULT NULL
+  approvedBy: varchar(100) NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  INDEXES: adjustmentType(adjustmentType), grade(grade)
+
+### suppliers (rows: 3)
+  id: int(11) NOT NULL auto_increment [PRI]
+  supplierId: varchar(50) NOT NULL [UNI]
+  name: varchar(255) NOT NULL
+  contactPerson: varchar(255) NULL DEFAULT NULL
+  phone: varchar(20) NULL DEFAULT NULL
+  area: varchar(100) NULL DEFAULT NULL
+  address: text NULL DEFAULT NULL
+  notes: text NULL DEFAULT NULL
+  isActive: tinyint(1) NULL DEFAULT 1 [MUL]
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  isDeleted: tinyint(1) NOT NULL DEFAULT 0
+  INDEXES: isActive(isActive), supplierId(supplierId) UNIQUE, supplierId_2(supplierId)
+
+### users (rows: 5)
+  id: int(11) NOT NULL auto_increment [PRI]
+  name: varchar(255) NOT NULL
+  email: varchar(255) NULL DEFAULT NULL [UNI]
+  username: varchar(100) NOT NULL [UNI]
+  password: varchar(255) NOT NULL
+  role: enum('Admin','Manager','User') NULL DEFAULT 'User' [MUL]
+  isActive: tinyint(1) NULL DEFAULT 1
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  INDEXES: email(email) UNIQUE, role(role), username(username) UNIQUE, username_2(username)
+
+### workers (rows: 3)
+  id: int(11) NOT NULL auto_increment [PRI]
+  workerId: varchar(50) NOT NULL [UNI]
+  name: varchar(255) NOT NULL
+  fatherName: varchar(255) NULL DEFAULT NULL
+  dateOfBirth: date NULL DEFAULT NULL
+  mobileNumber: varchar(20) NULL DEFAULT NULL
+  areaOfWork: varchar(100) NULL DEFAULT NULL
+  status: enum('Active','Inactive','On Leave') NULL DEFAULT 'Active' [MUL]
+  dailyWages: decimal(10,2) NULL DEFAULT NULL
+  monthlyWages: decimal(10,2) NULL DEFAULT NULL
+  notes: text NULL DEFAULT NULL
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  INDEXES: status(status), workerId(workerId) UNIQUE, workerId_2(workerId)
+
+### worker_advances (rows: 2)
+  id: int(11) NOT NULL auto_increment [PRI]
+  workerId: int(11) NOT NULL [MUL]
+  advanceDate: date NULL DEFAULT NULL
+  amount: decimal(12,2) NULL DEFAULT NULL
+  reason: text NULL DEFAULT NULL
+  status: enum('Pending','Approved','Settled','Cancelled') NULL DEFAULT 'Pending' [MUL]
+  createdAt: timestamp NOT NULL DEFAULT current_timestamp()
+  updatedAt: timestamp NOT NULL DEFAULT current_timestamp() on update current_timestamp()
+  createdBy: int(11) NULL DEFAULT NULL
+  INDEXES: status(status), workerId(workerId)
+  FKS: workerId -> workers.id

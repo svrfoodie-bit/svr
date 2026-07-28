@@ -1,24 +1,6 @@
 const { promisePool } = require('../config/database');
 
 class ProcessingBatch {
-  static async migrate() {
-    try {
-      await promisePool.query(`
-        ALTER TABLE processing_batches
-        ADD COLUMN IF NOT EXISTS wastage DECIMAL(10, 2) DEFAULT 0 AFTER quantity
-      `);
-    } catch {
-      try {
-        await promisePool.query(`
-          ALTER TABLE processing_batches
-          ADD COLUMN wastage DECIMAL(10, 2) DEFAULT 0 AFTER quantity
-        `);
-      } catch {
-        // Column may already exist or DB may not support IF NOT EXISTS.
-      }
-    }
-  }
-
   static async generateBatchNumber() {
     const [rows] = await promisePool.query('SELECT COUNT(*) as count FROM processing_batches');
     const count = rows[0].count + 1;

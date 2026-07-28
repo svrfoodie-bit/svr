@@ -1,9 +1,6 @@
 const Attendance = require('../models/Attendance.model');
 const Payroll = require('../models/Payroll.model');
 
-Attendance.createTable().catch(console.error);
-Payroll.createTable().catch(console.error);
-
 class AttendanceController {
   // ---- ATTENDANCE ----
 

@@ -29,6 +29,17 @@ const fixedAssetController   = require('../controllers/fixedAsset.controller');
 const automationController   = require('../controllers/automation.controller');
 const router = express.Router();
 
+// Shared: validates amount is a positive number, regardless of whether the
+// client sent it as `amount` or `paidAmount` (both are accepted by the
+// raw-purchase/job-work payment controllers).
+const paymentAmountValidator = body().custom((_, { req }) => {
+  const amount = parseFloat(req.body.amount ?? req.body.paidAmount);
+  if (!amount || amount <= 0) {
+    throw new Error('Payment amount must be greater than 0');
+  }
+  return true;
+});
+
 // ==================== DASHBOARD ROUTES ====================
 router.get('/dashboard/today', authenticate, getTodayStats);
 
@@ -83,9 +94,15 @@ router.delete('/raw-purchases/:id', authenticate, autoAudit('raw_purchases'), ra
 router.get('/raw-purchases/summary/metrics', authenticate, rawPurchaseController.getSummary);
 
 // ==================== RAW PURCHASE PAYMENT ROUTES ====================
+const rawPurchasePaymentValidators = [
+  body('rawPurchaseId').notEmpty().withMessage('Raw purchase is required').isInt({ min: 1 }).withMessage('Invalid raw purchase'),
+  body('paymentDate').notEmpty().withMessage('Payment date is required').isISO8601().withMessage('Invalid date format'),
+  body('paymentMode').notEmpty().withMessage('Payment mode is required'),
+  paymentAmountValidator,
+];
 router.get('/raw-purchase-payments', authenticate, rawPurchasePaymentController.getAll);
 router.get('/raw-purchase-payments/:id', authenticate, rawPurchasePaymentController.getById);
-router.post('/raw-purchase-payments', authenticate, rawPurchasePaymentController.create);
+router.post('/raw-purchase-payments', authenticate, rawPurchasePaymentValidators, validate, rawPurchasePaymentController.create);
 router.put('/raw-purchase-payments/:id', authenticate, rawPurchasePaymentController.update);
 router.delete('/raw-purchase-payments/:id', authenticate, rawPurchasePaymentController.delete);
 router.get('/raw-purchases/:rawPurchaseId/payments', authenticate, rawPurchasePaymentController.getByRawPurchaseId);
@@ -141,9 +158,15 @@ router.delete('/job-work/:id', authenticate, autoAudit('job_work'), JobWorkContr
 router.get('/job-work/summary/metrics', authenticate, JobWorkController.getSummary);
 
 // ==================== JOB WORK PAYMENT ROUTES ====================
+const jobWorkPaymentValidators = [
+  body('jobWorkId').notEmpty().withMessage('Job work is required').isInt({ min: 1 }).withMessage('Invalid job work'),
+  body('paymentDate').notEmpty().withMessage('Payment date is required').isISO8601().withMessage('Invalid date format'),
+  body('paymentMode').notEmpty().withMessage('Payment mode is required'),
+  paymentAmountValidator,
+];
 router.get('/job-work-payments', authenticate, jobWorkPaymentController.getAll);
 router.get('/job-work-payments/:id', authenticate, jobWorkPaymentController.getById);
-router.post('/job-work-payments', authenticate, jobWorkPaymentController.create);
+router.post('/job-work-payments', authenticate, jobWorkPaymentValidators, validate, jobWorkPaymentController.create);
 router.put('/job-work-payments/:id', authenticate, jobWorkPaymentController.update);
 router.delete('/job-work-payments/:id', authenticate, jobWorkPaymentController.delete);
 router.get('/job-work/:jobWorkId/payments', authenticate, jobWorkPaymentController.getByJobWorkId);
@@ -178,9 +201,22 @@ router.get('/sales-orders/grade-wise/summary', authenticate, SalesOrderControlle
 router.get('/sales-orders/summary/metrics', authenticate, SalesOrderController.getSummary);
 
 // ==================== SALES PAYMENT ROUTES ====================
+const salesPaymentValidators = [
+  body().custom((_, { req }) => {
+    if (!req.body.salesOrderId && !req.body.orderId) {
+      throw new Error('Sales order is required');
+    }
+    if (!req.body.paymentDate && !req.body.date) {
+      throw new Error('Payment date is required');
+    }
+    return true;
+  }),
+  body('paymentMode').notEmpty().withMessage('Payment mode is required'),
+  paymentAmountValidator,
+];
 router.get('/sales-payments', authenticate, SalesPaymentController.getAll);
 router.get('/sales-payments/:id', authenticate, SalesPaymentController.getById);
-router.post('/sales-payments', authenticate, SalesPaymentController.create);
+router.post('/sales-payments', authenticate, salesPaymentValidators, validate, SalesPaymentController.create);
 router.delete('/sales-payments/:id', authenticate, SalesPaymentController.delete);
 router.get('/sales-payments/summary/metrics', authenticate, SalesPaymentController.getSummary);
 
@@ -244,7 +280,21 @@ router.delete('/loans/:id', authenticate, loanController.deleteLoan);
 router.get('/loan-payments', authenticate, loanController.getAllPayments);
 router.get('/loan-payments/interest-burden', authenticate, loanController.getMonthlyInterestBurden);
 router.get('/loan-payments/loan/:loanId', authenticate, loanController.getPaymentsByLoan);
-router.post('/loan-payments', authenticate, loanController.createPayment);
+const loanPaymentValidators = [
+  body('loanId').notEmpty().withMessage('Loan is required').isInt({ min: 1 }).withMessage('Invalid loan'),
+  body('paymentDate').notEmpty().withMessage('Payment date is required').isISO8601().withMessage('Invalid date format'),
+  body('paymentType').notEmpty().withMessage('Payment type is required')
+    .isIn(['EMI', 'InterestOnly', 'PrincipalOnly', 'Prepayment', 'FullSettlement']).withMessage('Invalid payment type'),
+  body().custom((_, { req }) => {
+    const principal = parseFloat(req.body.principalAmount) || 0;
+    const interest = parseFloat(req.body.interestAmount) || 0;
+    if (principal + interest <= 0) {
+      throw new Error('Payment amount must be greater than 0');
+    }
+    return true;
+  }),
+];
+router.post('/loan-payments', authenticate, loanPaymentValidators, validate, loanController.createPayment);
 router.delete('/loan-payments/:id', authenticate, loanController.deletePayment);
 
 // ==================== CAPITAL INVESTMENT ROUTES ====================

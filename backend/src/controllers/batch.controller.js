@@ -1,8 +1,6 @@
 const JobWork = require('../models/JobWork.model');
 const ProcessingBatch = require('../models/ProcessingBatch.model');
 
-ProcessingBatch.migrate().catch(console.error);
-
 class JobWorkController {
   async getAll(req, res, next) {
     try {

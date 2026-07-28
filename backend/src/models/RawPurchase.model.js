@@ -1,19 +1,6 @@
 const { promisePool } = require('../config/database');
 
 class RawPurchase {
-  // Add fundedByLoanId column if it doesn't exist (run once at startup)
-  static async migrate() {
-    try {
-      await promisePool.query(`
-        ALTER TABLE raw_purchases
-        ADD COLUMN IF NOT EXISTS fundedByLoanId INT NULL,
-        ADD COLUMN IF NOT EXISTS fundedByLoanCode VARCHAR(20) NULL
-      `);
-    } catch (err) {
-      // Column may already exist or DB doesn't support IF NOT EXISTS — ignore
-    }
-  }
-
   static async create(data) {
     const query = `
       INSERT INTO raw_purchases (supplierId, purchaseDate, quantity, ratePerUnit, totalAmount,

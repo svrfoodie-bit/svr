@@ -2,8 +2,6 @@ const FinishedGoodsStock = require('../models/FinishedGoodsStock.model');
 const WorkerAdvance = require('../models/WorkerAdvance.model');
 const Supplier = require('../models/Supplier.model');
 
-FinishedGoodsStock.migrate().catch(console.error);
-
 class FinishedGoodsStockController {
   async getAll(req, res, next) {
     try {

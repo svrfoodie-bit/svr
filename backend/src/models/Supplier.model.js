@@ -101,7 +101,7 @@ class Supplier {
         SUM(rp.totalAmount) as totalAmount
       FROM suppliers s
       LEFT JOIN raw_purchases rp ON s.id = rp.supplierId
-      WHERE 1=1
+      WHERE COALESCE(s.isDeleted, 0) = 0
     `;
     const params = [];
 

@@ -1,19 +1,6 @@
 const { promisePool } = require('../config/database');
 
 class FinishedGoodsStock {
-  static async migrate() {
-    for (const statement of [
-      "ALTER TABLE stock_adjustments ADD COLUMN dateAdded DATE NULL AFTER quantity",
-      "ALTER TABLE stock_adjustments ADD COLUMN approvedBy VARCHAR(100) NULL AFTER reason",
-    ]) {
-      try {
-        await promisePool.query(statement);
-      } catch {
-        // Column may already exist.
-      }
-    }
-  }
-
   static async create(data) {
     const query = `
       INSERT INTO finished_goods_stock (batchId, grade, quantity, dateAdded, createdBy)
@@ -122,7 +109,7 @@ class FinishedGoodsStock {
       await connection.beginTransaction();
 
       const [stockRows] = await connection.query(
-        'SELECT COALESCE(SUM(quantity), 0) AS stock FROM finished_goods_stock WHERE grade = ?',
+        'SELECT COALESCE(SUM(quantity), 0) AS stock FROM finished_goods_stock WHERE grade = ? FOR UPDATE',
         [data.grade]
       );
       const availableStock = parseFloat(stockRows[0]?.stock) || 0;

@@ -1,25 +1,6 @@
 const { promisePool } = require('../config/database');
 
 class SalesOrder {
-  static async migrate() {
-    try {
-      await promisePool.query(`
-        ALTER TABLE sales_orders
-        ADD COLUMN IF NOT EXISTS orderDate DATE NULL AFTER customerId,
-        ADD COLUMN IF NOT EXISTS paymentType VARCHAR(30) DEFAULT 'Cash' AFTER deliveryDate,
-        ADD COLUMN IF NOT EXISTS notes TEXT NULL AFTER status
-      `);
-    } catch {
-      for (const statement of [
-        "ALTER TABLE sales_orders ADD COLUMN orderDate DATE NULL AFTER customerId",
-        "ALTER TABLE sales_orders ADD COLUMN paymentType VARCHAR(30) DEFAULT 'Cash' AFTER deliveryDate",
-        "ALTER TABLE sales_orders ADD COLUMN notes TEXT NULL AFTER status",
-      ]) {
-        try { await promisePool.query(statement); } catch { /* already exists */ }
-      }
-    }
-  }
-
   static async generateOrderNumber() {
     const year = new Date().getFullYear();
     const [rows] = await promisePool.query(
@@ -68,51 +49,80 @@ class SalesOrder {
     const paymentType = data.paymentType || 'Cash';
     const orderDate = data.orderDate || data.date || new Date();
 
-    const query = `
-      INSERT INTO sales_orders (salesOrderId, customerId, orderDate, productGrade, quantity, ratePerUnit,
-                                totalAmount, deliveryDate, paymentType, status, notes, createdBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    const [result] = await promisePool.query(query, [
-      orderNumber,
-      data.customerId,
-      orderDate,
-      order.productGrade,
-      order.quantity,
-      order.ratePerUnit,
-      order.totalAmount,
-      data.deliveryDate || null,
-      paymentType,
-      data.status || 'Pending',
-      data.notes || data.remarks || null,
-      data.createdBy || 1
-    ]);
+    const connection = await promisePool.getConnection();
+    try {
+      await connection.beginTransaction();
 
-    if (['Cash', 'UPI', 'PhonePe'].includes(paymentType) && order.totalAmount > 0) {
-      await promisePool.query(
-        `INSERT INTO sales_payments (salesOrderId, paymentDate, amount, paymentMode, reference, notes, createdBy)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      // Server-side stock check (the frontend check is a UX convenience only
+      // and reads a stale snapshot — it cannot prevent overselling under
+      // concurrent requests or a direct API call).
+      for (const item of order.items) {
+        const [stockRows] = await connection.query(
+          'SELECT COALESCE(SUM(quantity), 0) AS stock FROM finished_goods_stock WHERE grade = ? FOR UPDATE',
+          [item.grade]
+        );
+        const availableStock = parseFloat(stockRows[0]?.stock) || 0;
+        if (item.quantity > availableStock) {
+          const error = new Error(
+            `Insufficient stock for ${item.grade}. Available: ${availableStock} KG, Required: ${item.quantity} KG`
+          );
+          error.statusCode = 400;
+          throw error;
+        }
+      }
+
+      const [result] = await connection.query(
+        `INSERT INTO sales_orders (salesOrderId, customerId, orderDate, productGrade, quantity, ratePerUnit,
+                                  totalAmount, deliveryDate, paymentType, status, notes, createdBy)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          result.insertId,
+          orderNumber,
+          data.customerId,
           orderDate,
+          order.productGrade,
+          order.quantity,
+          order.ratePerUnit,
           order.totalAmount,
-          paymentType === 'PhonePe' ? 'UPI' : paymentType,
-          null,
-          'Auto-recorded from sales order',
-          data.createdBy || 1,
+          data.deliveryDate || null,
+          paymentType,
+          data.status || 'Pending',
+          data.notes || data.remarks || null,
+          data.createdBy || 1
         ]
       );
+
+      if (['Cash', 'UPI', 'PhonePe'].includes(paymentType) && order.totalAmount > 0) {
+        await connection.query(
+          `INSERT INTO sales_payments (salesOrderId, paymentDate, amount, paymentMode, reference, notes, createdBy)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            result.insertId,
+            orderDate,
+            order.totalAmount,
+            paymentType === 'PhonePe' ? 'UPI' : paymentType,
+            null,
+            'Auto-recorded from sales order',
+            data.createdBy || 1,
+          ]
+        );
+      }
+
+      for (const item of order.items) {
+        await connection.query(
+          `INSERT INTO finished_goods_stock (batchId, grade, quantity, dateAdded, createdBy)
+           VALUES (?, ?, ?, ?, ?)`,
+          [null, item.grade, -Math.abs(item.quantity), orderDate, data.createdBy || 1]
+        );
+      }
+
+      await connection.commit();
+      return result.insertId;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
     }
-
-    await Promise.all(order.items.map((item) =>
-      promisePool.query(
-        `INSERT INTO finished_goods_stock (batchId, grade, quantity, dateAdded, createdBy)
-         VALUES (?, ?, ?, ?, ?)`,
-        [null, item.grade, -Math.abs(item.quantity), orderDate, data.createdBy || 1]
-      )
-    ));
-
-    return result.insertId;
   }
 
   static async getAll(filters = {}) {
@@ -259,7 +269,7 @@ class SalesOrder {
         COALESCE(SUM(sp.amount), 0) as totalPaid,
         COALESCE(SUM(so.totalAmount), 0) - COALESCE(SUM(sp.amount), 0) as outstanding
       FROM customers c
-      LEFT JOIN sales_orders so ON c.id = so.customerId
+      LEFT JOIN sales_orders so ON c.id = so.customerId AND so.status != 'Cancelled'
       LEFT JOIN sales_payments sp ON so.id = sp.salesOrderId
       GROUP BY c.id
       ORDER BY outstanding DESC
@@ -276,6 +286,7 @@ class SalesOrder {
         COALESCE(SUM(quantity), 0) as totalQuantity,
         COALESCE(SUM(totalAmount), 0) as totalAmount
       FROM sales_orders
+      WHERE status != 'Cancelled'
       GROUP BY productGrade
       ORDER BY totalAmount DESC
     `;
@@ -299,7 +310,7 @@ class SalesOrder {
         FROM sales_payments
         GROUP BY salesOrderId
       ) pay ON pay.salesOrderId = so.id
-      WHERE 1=1
+      WHERE so.status != 'Cancelled'
     `;
     const params = [];
 
@@ -332,7 +343,5 @@ class SalesOrder {
     return summary;
   }
 }
-
-SalesOrder.migrate().catch(console.error);
 
 module.exports = SalesOrder;
