@@ -16,12 +16,25 @@ import {
   Shield,
   Eye,
   EyeOff,
+  Layers,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import settingsService from '../services/settingsService';
 import { authService } from '../services/authService';
 import { useCompanyStore } from '../context/companyStore';
+import { useModuleSettingsStore } from '../context/moduleSettingsStore';
+import { menuSections } from '../config/menuSections';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+
+// Flattened, toggleable modules — mirrors the sidebar, skipping the always-on Dashboard.
+const TOGGLEABLE_MODULES = menuSections.slice(1).map((section) => ({
+  title: section.title,
+  items: section.items.flatMap((item) =>
+    item.submenu
+      ? item.submenu.map((sub) => ({ path: sub.path, label: `${item.label} — ${sub.label}` }))
+      : [{ path: item.path, label: item.label }]
+  ),
+}));
 
 const DEFAULTS = {
   company_info: {
@@ -62,6 +75,9 @@ const DEFAULTS = {
     emailNotifications: false,
     smsNotifications: false,
   },
+  module_settings: {
+    disabledPaths: [],
+  },
 };
 
 const Settings = () => {
@@ -73,7 +89,9 @@ const Settings = () => {
   const [paymentConfig, setPaymentConfig] = useState(DEFAULTS.payment_config);
   const [userPrefs, setUserPrefs] = useState(DEFAULTS.user_preferences);
   const [notifications, setNotifications] = useState(DEFAULTS.notification_settings);
+  const [disabledPaths, setDisabledPaths] = useState(DEFAULTS.module_settings.disabledPaths);
   const { setCompanyInfo: setStoredCompanyInfo } = useCompanyStore();
+  const { setDisabledPaths: setStoredDisabledPaths } = useModuleSettingsStore();
 
   const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordErrors, setPasswordErrors] = useState({});
@@ -98,6 +116,7 @@ const Settings = () => {
       if (data.payment_config) setPaymentConfig({ ...DEFAULTS.payment_config, ...data.payment_config });
       if (data.user_preferences) setUserPrefs({ ...DEFAULTS.user_preferences, ...data.user_preferences });
       if (data.notification_settings) setNotifications({ ...DEFAULTS.notification_settings, ...data.notification_settings });
+      if (data.module_settings) setDisabledPaths(data.module_settings.disabledPaths || []);
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to load settings:', error);
       toast.error('Failed to load settings');
@@ -112,6 +131,7 @@ const Settings = () => {
     try {
       await settingsService.save(section, data);
       if (section === 'company_info') setStoredCompanyInfo(data);
+      if (section === 'module_settings') setStoredDisabledPaths(data.disabledPaths);
       toast.success('Settings saved successfully');
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to save settings:', error);
@@ -149,11 +169,18 @@ const Settings = () => {
     }
   };
 
+  const toggleModule = (path) => {
+    setDisabledPaths((prev) =>
+      prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path]
+    );
+  };
+
   const tabs = [
     { id: 'company', label: 'Company Info', icon: Building2 },
     { id: 'payment', label: 'Payment Config', icon: CreditCard },
     { id: 'preferences', label: 'Preferences', icon: User },
     { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'modules', label: 'Modules', icon: Layers },
     { id: 'security', label: 'Security', icon: Shield },
   ];
 
@@ -578,6 +605,50 @@ const Settings = () => {
             )}
 
             {/* Security Tab */}
+            {/* Modules Tab */}
+            {activeTab === 'modules' && (
+              <form onSubmit={(e) => handleSave(e, 'module_settings', { disabledPaths })}>
+                <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                  <Layers className="text-primary-600" />
+                  Modules
+                </h2>
+                <p className="text-sm text-gray-600 mb-6">
+                  Turn off modules you do not use to declutter the sidebar. You can turn them back on any time — no data is deleted.
+                </p>
+
+                <div className="space-y-6">
+                  {TOGGLEABLE_MODULES.map((group) => (
+                    <div key={group.title}>
+                      <h3 className="font-semibold text-gray-900 mb-2">{group.title}</h3>
+                      <div className="space-y-2">
+                        {group.items.map((item) => (
+                          <label
+                            key={item.path}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
+                          >
+                            <span className="font-medium text-gray-900 text-sm">{item.label}</span>
+                            <input
+                              type="checkbox"
+                              checked={!disabledPaths.includes(item.path)}
+                              onChange={() => toggleModule(item.path)}
+                              className="w-5 h-5 text-primary-600 rounded focus:ring-2 focus:ring-primary-500/30"
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end mt-6">
+                  <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
+                    <Save size={18} />
+                    {saving ? 'Saving...' : 'Save Module Settings'}
+                  </button>
+                </div>
+              </form>
+            )}
+
             {activeTab === 'security' && (
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">

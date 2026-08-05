@@ -32,52 +32,34 @@ class Payroll {
   }
 
   static async generate(workerId, year, month) {
-    // Pull attendance summary and calculate salary
-    const Attendance = require('./Attendance.model');
-    const summary = await Attendance.getMonthlySummary(year, month);
+    // Pull work summary (quantity x rate + bonus from daily_work) and calculate salary
+    const DailyWork = require('./DailyWork.model');
+    const summary = await DailyWork.getMonthlySummary(year, month);
     const ws = summary.find(s => s.workerId === parseInt(workerId));
     if (!ws) return null;
 
-    const workingDays = 26; // standard working days in a month
-    let basicSalary = 0;
+    const basicSalary = parseFloat(ws.totalEarnings) || 0;
 
-    if (ws.monthlyWages && parseFloat(ws.monthlyWages) > 0) {
-      // Monthly salaried worker
-      const perDayRate = parseFloat(ws.monthlyWages) / workingDays;
-      const effectiveDays = ws.presentDays + (ws.halfDays * 0.5);
-      basicSalary = effectiveDays * perDayRate;
-    } else {
-      // Daily wage worker
-      const perDayRate = parseFloat(ws.dailyWages) || 0;
-      const effectiveDays = ws.presentDays + (ws.halfDays * 0.5);
-      basicSalary = effectiveDays * perDayRate;
-    }
-
-    const overtimeRate = (parseFloat(ws.dailyWages) || (parseFloat(ws.monthlyWages) / workingDays / 8)) * 1.5;
-    const overtimePay = (ws.totalOvertimeHours || 0) * overtimeRate;
-
-    // Check advance deduction
+    // Check advance deduction — only advances taken within this payroll month
     const [advances] = await promisePool.query(`
       SELECT COALESCE(SUM(amount), 0) AS totalAdvance
       FROM worker_advances
-      WHERE workerId = ? AND status = 'Pending'
-    `, [workerId]);
+      WHERE workerId = ? AND status != 'Settled'
+        AND YEAR(advanceDate) = ? AND MONTH(advanceDate) = ?
+    `, [workerId, year, month]);
     const advanceDeduction = parseFloat(advances[0]?.totalAdvance) || 0;
 
-    const netSalary = Math.max(0, basicSalary + overtimePay - advanceDeduction);
+    const netSalary = Math.max(0, basicSalary - advanceDeduction);
 
     return {
       workerId: ws.workerId,
       workerName: ws.workerName,
       payrollMonth: month,
       payrollYear: year,
-      presentDays: ws.presentDays,
-      halfDays: ws.halfDays,
-      absentDays: ws.absentDays,
-      overtimeHours: ws.totalOvertimeHours || 0,
+      totalQuantity: parseFloat(ws.totalQuantity) || 0,
+      workDays: ws.workDays || 0,
       basicSalary: basicSalary.toFixed(2),
-      overtimePay: overtimePay.toFixed(2),
-      bonus: 0,
+      bonus: parseFloat(ws.totalBonus || 0).toFixed(2),
       deductions: 0,
       advanceDeduction: advanceDeduction.toFixed(2),
       netSalary: netSalary.toFixed(2),
@@ -86,23 +68,20 @@ class Payroll {
 
   static async save(data) {
     const query = `
-      INSERT INTO payroll (workerId, payrollMonth, payrollYear, presentDays, halfDays, absentDays,
-        overtimeHours, basicSalary, overtimePay, bonus, deductions, advanceDeduction, netSalary,
+      INSERT INTO payroll (workerId, payrollMonth, payrollYear, totalQuantity,
+        basicSalary, bonus, deductions, advanceDeduction, netSalary,
         paymentMode, paymentDate, status, notes, createdBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
-        presentDays = VALUES(presentDays), halfDays = VALUES(halfDays), absentDays = VALUES(absentDays),
-        overtimeHours = VALUES(overtimeHours), basicSalary = VALUES(basicSalary),
-        overtimePay = VALUES(overtimePay), bonus = VALUES(bonus), deductions = VALUES(deductions),
+        totalQuantity = VALUES(totalQuantity), basicSalary = VALUES(basicSalary),
+        bonus = VALUES(bonus), deductions = VALUES(deductions),
         advanceDeduction = VALUES(advanceDeduction), netSalary = VALUES(netSalary),
         paymentMode = VALUES(paymentMode), paymentDate = VALUES(paymentDate),
         status = VALUES(status), notes = VALUES(notes), updatedAt = NOW()
     `;
     const [result] = await promisePool.query(query, [
-      data.workerId, data.payrollMonth, data.payrollYear,
-      data.presentDays || 0, data.halfDays || 0, data.absentDays || 0,
-      data.overtimeHours || 0, data.basicSalary || 0, data.overtimePay || 0,
-      data.bonus || 0, data.deductions || 0, data.advanceDeduction || 0,
+      data.workerId, data.payrollMonth, data.payrollYear, data.totalQuantity || 0,
+      data.basicSalary || 0, data.bonus || 0, data.deductions || 0, data.advanceDeduction || 0,
       data.netSalary || 0, data.paymentMode || 'Cash', data.paymentDate || null,
       data.status || 'Draft', data.notes || null, data.createdBy || 1,
     ]);

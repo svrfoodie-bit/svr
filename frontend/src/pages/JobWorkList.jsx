@@ -345,14 +345,15 @@ const JobWorkList = () => {
                 <SortHeader col="totalCost" label="Total Cost" sortKey={sortKey} sortDir={sortDir} onSort={setSort} align="right" />
                 <SortHeader col="totalPaid" label="Paid" sortKey={sortKey} sortDir={sortDir} onSort={setSort} align="right" />
                 <SortHeader col="balance" label="Balance" sortKey={sortKey} sortDir={sortDir} onSort={setSort} align="right" />
-                <SortHeader col="paymentStatus" label="Status" sortKey={sortKey} sortDir={sortDir} onSort={setSort} align="center" />
+                <SortHeader col="status" label="Job Status" sortKey={sortKey} sortDir={sortDir} onSort={setSort} align="center" />
+                <SortHeader col="paymentStatus" label="Payment" sortKey={sortKey} sortDir={sortDir} onSort={setSort} align="center" />
                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan="12" className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan="13" className="px-6 py-8 text-center text-gray-500">
                     <div className="flex items-center justify-center">
                       <div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
                       <span className="ml-2">Loading...</span>
@@ -361,7 +362,7 @@ const JobWorkList = () => {
                 </tr>
               ) : jobWorks.length === 0 ? (
                 <tr>
-                  <td colSpan="12">
+                  <td colSpan="13">
                     <EmptyState
                       icon={Briefcase}
                       message="No job works found"
@@ -406,6 +407,9 @@ const JobWorkList = () => {
                     </td>
                     <td className="px-6 py-4 text-right font-semibold text-red-600">
                       ₹{(job.balance ?? 0).toLocaleString('en-IN')}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <StatusBadge status={job.status || 'In Progress'} />
                     </td>
                     <td className="px-6 py-4 text-center">
                       <StatusBadge status={job.paymentStatus} />

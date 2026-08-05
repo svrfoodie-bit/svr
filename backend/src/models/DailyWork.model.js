@@ -11,14 +11,15 @@ class DailyWork {
     const quantity = parseFloat(data.quantity ?? data.completedQuantity) || 0;
     const assignedQuantity = parseFloat(data.assignedQuantity) || quantity;
     const rate = parseFloat(data.rate) || 0;
+    const bonusRate = parseFloat(data.bonusRate ?? data.bonusPerKg) || 0;
     const baseWage = quantity * rate;
-    const bonusAmount = parseFloat(data.bonusAmount) || 0;
+    const bonusAmount = quantity * bonusRate;
     const totalAmount = data.totalAmount ?? (baseWage + bonusAmount);
     const status = this.getStatusFromQuantities(assignedQuantity, quantity, data.status);
     const query = `
-      INSERT INTO daily_work (workerId, workDate, workType, assignedQuantity, quantity, rate, totalAmount,
-                              bonusAmount, bonusEligible, status, notes, createdBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO daily_work (workerId, workDate, workType, assignedQuantity, quantity, rate, bonusRate,
+                              totalAmount, bonusAmount, bonusEligible, status, notes, createdBy)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const [result] = await promisePool.query(query, [
       data.workerId,
@@ -27,6 +28,7 @@ class DailyWork {
       assignedQuantity,
       quantity,
       rate,
+      bonusRate,
       totalAmount,
       bonusAmount,
       data.bonusEligible ? 1 : 0,
@@ -105,31 +107,40 @@ class DailyWork {
     const updates = [];
     const params = [];
 
+    const [existingRows] = await promisePool.query('SELECT * FROM daily_work WHERE id = ?', [id]);
+    const existingRow = existingRows[0];
+    if (!existingRow) return false;
+
     // Normalize field names from frontend
     if (data.date) data.workDate = data.date;
     if (data.remarks) data.notes = data.remarks;
+    if (data.bonusPerKg !== undefined && data.bonusRate === undefined) data.bonusRate = data.bonusPerKg;
     if (data.status && !['Pending', 'In Progress', 'Completed'].includes(data.status)) {
       delete data.status;
     }
     if (data.completedQuantity !== undefined && data.quantity === undefined) {
       data.quantity = data.completedQuantity;
     }
-    const quantity = parseFloat(data.quantity) || 0;
-    const assignedQuantity = parseFloat(data.assignedQuantity) || quantity;
-    const rate = parseFloat(data.rate) || 0;
-    const bonusAmount = parseFloat(data.bonusAmount) || 0;
+    const quantity = data.quantity !== undefined ? (parseFloat(data.quantity) || 0) : (parseFloat(existingRow.quantity) || 0);
+    const assignedQuantity = data.assignedQuantity !== undefined
+      ? (parseFloat(data.assignedQuantity) || quantity)
+      : (parseFloat(existingRow.assignedQuantity) || quantity);
+    const rate = data.rate !== undefined ? (parseFloat(data.rate) || 0) : (parseFloat(existingRow.rate) || 0);
+    if (data.bonusRate !== undefined) {
+      data.bonusAmount = quantity * (parseFloat(data.bonusRate) || 0);
+    } else if (data.quantity !== undefined) {
+      data.bonusAmount = quantity * (parseFloat(existingRow.bonusRate) || 0);
+    }
+    const bonusAmount = parseFloat(data.bonusAmount ?? existingRow.bonusAmount) || 0;
     if (data.totalAmount === undefined && (data.quantity !== undefined || data.rate !== undefined || data.bonusAmount !== undefined)) {
       data.totalAmount = (quantity * rate) + bonusAmount;
-    }
-    if (data.bonusAmount === undefined && (data.quantity !== undefined || data.rate !== undefined || data.totalAmount !== undefined)) {
-      data.bonusAmount = bonusAmount;
     }
     if ((data.quantity !== undefined || data.assignedQuantity !== undefined) && data.status === undefined) {
       data.status = this.getStatusFromQuantities(assignedQuantity, quantity);
     }
 
     Object.entries(data).forEach(([key, value]) => {
-      if (['workerId', 'workDate', 'workType', 'assignedQuantity', 'quantity', 'rate', 'totalAmount', 'bonusAmount', 'bonusEligible', 'status', 'notes'].includes(key)) {
+      if (['workerId', 'workDate', 'workType', 'assignedQuantity', 'quantity', 'rate', 'bonusRate', 'totalAmount', 'bonusAmount', 'bonusEligible', 'status', 'notes'].includes(key)) {
         updates.push(`${key} = ?`);
         params.push(value);
       }
@@ -196,6 +207,28 @@ class DailyWork {
 
   static getAllWorkTypes() {
     return ['Regular', 'Overtime', 'Maintenance', 'Training'];
+  }
+
+  static async getMonthlySummary(year, month) {
+    // Per-worker totals from daily_work for a given month, used to drive payroll.
+    const [rows] = await promisePool.query(`
+      SELECT
+        w.id AS workerId,
+        w.name AS workerName,
+        w.areaOfWork AS role,
+        COALESCE(SUM(dw.quantity), 0) AS totalQuantity,
+        COUNT(DISTINCT CASE WHEN dw.quantity > 0 THEN DATE(dw.workDate) END) AS workDays,
+        COALESCE(SUM(dw.totalAmount), 0) AS totalEarnings,
+        COALESCE(SUM(dw.bonusAmount), 0) AS totalBonus
+      FROM workers w
+      LEFT JOIN daily_work dw ON dw.workerId = w.id
+        AND YEAR(dw.workDate) = ?
+        AND MONTH(dw.workDate) = ?
+      WHERE w.status = 'Active'
+      GROUP BY w.id, w.name, w.areaOfWork
+      ORDER BY w.name
+    `, [year, month]);
+    return rows;
   }
 }
 

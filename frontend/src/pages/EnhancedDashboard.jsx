@@ -37,6 +37,7 @@ import { salesPaymentService } from '../services/salesPaymentService';
 import { expenseService } from '../services/expenseService';
 import { dashboardService } from '../services/dashboardService';
 import { useAuthStore } from '../context/authStore';
+import { useModuleSettingsStore } from '../context/moduleSettingsStore';
 import useCountUp from '../hooks/useCountUp';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -94,6 +95,7 @@ const KpiCard = ({ card, index }) => {
 
 const EnhancedDashboard = () => {
   const navigate = useNavigate();
+  const disabledPaths = useModuleSettingsStore((state) => state.disabledPaths);
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('MONTH');
@@ -311,14 +313,15 @@ const EnhancedDashboard = () => {
     { name: 'Operating',   amount: dashboardData.expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0) },
   ];
 
+  // modulePath is what gets checked against Settings > Modules; path is where the button navigates.
   const quickActions = [
-    { label: 'New Sale',     icon: ShoppingCart, color: 'from-blue-500 to-blue-600',   path: '/sales-orders/new' },
-    { label: 'Raw Purchase', icon: Package,       color: 'from-emerald-500 to-emerald-600', path: '/raw-purchases/new' },
-    { label: 'Add Expense',  icon: DollarSign,    color: 'from-rose-500 to-rose-600',   path: '/expenses/new' },
-    { label: 'Job Work',     icon: Briefcase,     color: 'from-violet-500 to-violet-600', path: '/job-work/new' },
-    { label: 'Payments',     icon: Wallet,        color: 'from-amber-500 to-amber-600', path: '/payments-management' },
-    { label: 'Reports',      icon: BarChart3,     color: 'from-pink-500 to-pink-600',   path: '/standard-reports' },
-  ];
+    { label: 'New Sale',     icon: ShoppingCart, color: 'from-blue-500 to-blue-600',   path: '/sales-orders/new',   modulePath: '/sales-orders' },
+    { label: 'Raw Purchase', icon: Package,       color: 'from-emerald-500 to-emerald-600', path: '/raw-purchases/new', modulePath: '/raw-purchases' },
+    { label: 'Add Expense',  icon: DollarSign,    color: 'from-rose-500 to-rose-600',   path: '/expenses/new',       modulePath: '/expenses' },
+    { label: 'Job Work',     icon: Briefcase,     color: 'from-violet-500 to-violet-600', path: '/job-work/new',   modulePath: '/job-work' },
+    { label: 'Payments',     icon: Wallet,        color: 'from-amber-500 to-amber-600', path: '/payments-management', modulePath: '/payments-management' },
+    { label: 'Reports',      icon: BarChart3,     color: 'from-pink-500 to-pink-600',   path: '/standard-reports', modulePath: '/standard-reports' },
+  ].filter((a) => !disabledPaths.includes(a.modulePath));
 
   const insights = getInsights();
 
@@ -433,7 +436,7 @@ const EnhancedDashboard = () => {
               { label: 'Job Works',   count: todayStats.jobWorks.count,          amount: todayStats.jobWorks.amount,          path: '/job-work' },
               { label: 'Expenses',    count: todayStats.expenses.count,          amount: todayStats.expenses.amount,          path: '/expenses' },
               { label: 'Collected',   count: todayStats.paymentsReceived.count,  amount: todayStats.paymentsReceived.amount,  path: '/sales-payments' },
-            ].map(({ label, count, amount, path }) => (
+            ].filter(({ path }) => !disabledPaths.includes(path)).map(({ label, count, amount, path }) => (
               <button
                 key={label}
                 onClick={() => navigate(path)}

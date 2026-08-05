@@ -39,6 +39,9 @@ const DEFAULTS = {
     emailNotifications: false,
     smsNotifications: false,
   },
+  module_settings: {
+    disabledPaths: [],
+  },
 };
 
 class Settings {
@@ -50,6 +53,7 @@ class Settings {
         payment_config JSON,
         user_preferences JSON,
         notification_settings JSON,
+        module_settings JSON,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         CONSTRAINT single_row CHECK (id = 1)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -73,6 +77,7 @@ class Settings {
       payment_config: row.payment_config ? (typeof row.payment_config === 'string' ? JSON.parse(row.payment_config) : row.payment_config) : DEFAULTS.payment_config,
       user_preferences: row.user_preferences ? (typeof row.user_preferences === 'string' ? JSON.parse(row.user_preferences) : row.user_preferences) : DEFAULTS.user_preferences,
       notification_settings: row.notification_settings ? (typeof row.notification_settings === 'string' ? JSON.parse(row.notification_settings) : row.notification_settings) : DEFAULTS.notification_settings,
+      module_settings: row.module_settings ? (typeof row.module_settings === 'string' ? JSON.parse(row.module_settings) : row.module_settings) : DEFAULTS.module_settings,
     };
   }
 
@@ -83,7 +88,7 @@ class Settings {
 
   static async save(section, data) {
     await Settings.ensureTable();
-    const allowed = ['company_info', 'payment_config', 'user_preferences', 'notification_settings'];
+    const allowed = ['company_info', 'payment_config', 'user_preferences', 'notification_settings', 'module_settings'];
     if (!allowed.includes(section)) throw new Error(`Invalid settings section: ${section}`);
 
     const query = `

@@ -74,7 +74,10 @@ class WorkerAdvanceController {
     try {
       const filters = {
         workerId: req.query.workerId,
-        status: req.query.status
+        status: req.query.status,
+        date: req.query.date,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate
       };
       const advances = await WorkerAdvance.getAll(filters);
       res.json({ success: true, data: advances });

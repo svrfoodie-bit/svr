@@ -31,6 +31,16 @@ class WorkerAdvance {
       params.push(filters.status);
     }
 
+    if (filters.date) {
+      query += ' AND DATE(wa.advanceDate) = ?';
+      params.push(filters.date);
+    }
+
+    if (filters.startDate && filters.endDate) {
+      query += ' AND wa.advanceDate BETWEEN ? AND ?';
+      params.push(filters.startDate, filters.endDate);
+    }
+
     query += ' ORDER BY wa.advanceDate DESC';
     const [rows] = await promisePool.query(query, params);
     return rows;

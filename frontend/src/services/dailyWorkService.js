@@ -29,6 +29,7 @@ export const dailyWorkService = {
   update: (id, workData) => put(`/daily-work/${id}`, workData),
   delete: (id) => del(`/daily-work/${id}`),
   getSummaryMetrics: (filters = {}) => get('/daily-work/summary/metrics', filters),
+  getMonthlySummary: (year, month) => get('/daily-work/monthly-summary', { year, month }),
   getWorkTypes: () => get('/daily-work/types/list'),
   getWorkTypeInfo: (workType) => WORK_TYPES[workType] || null,
   calculateBonus,

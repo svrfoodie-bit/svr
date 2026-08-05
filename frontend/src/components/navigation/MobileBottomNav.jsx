@@ -25,7 +25,8 @@ import {
   FileDown,
   Activity,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useModuleSettingsStore } from '../../context/moduleSettingsStore';
 
 // The 4 permanent nav items (index 2 is replaced by the centre FAB)
 const NAV_ITEMS = [
@@ -36,12 +37,13 @@ const NAV_ITEMS = [
   { path: '/outstanding-report', icon: AlertTriangle, label: 'Outstanding' },
 ];
 
-// Quick-add options shown above the "+" button
+// Quick-add options shown above the "+" button. modulePath is what gets checked
+// against the Settings > Modules disabled list (the create form, not the list page).
 const QUICK_ADD = [
-  { label: 'New Sale',      path: '/sales-orders/new',   icon: ShoppingCart, color: 'bg-blue-500' },
-  { label: 'Raw Purchase',  path: '/raw-purchases/new',  icon: Package,      color: 'bg-emerald-500' },
-  { label: 'New Expense',   path: '/expenses/new',       icon: Receipt,      color: 'bg-rose-500' },
-  { label: 'Job Work',      path: '/job-work/new',       icon: Briefcase,    color: 'bg-violet-500' },
+  { label: 'New Sale',      path: '/sales-orders/new',   modulePath: '/sales-orders',   icon: ShoppingCart, color: 'bg-blue-500' },
+  { label: 'Raw Purchase',  path: '/raw-purchases/new',  modulePath: '/raw-purchases',  icon: Package,      color: 'bg-emerald-500' },
+  { label: 'New Expense',   path: '/expenses/new',       modulePath: '/expenses',       icon: Receipt,      color: 'bg-rose-500' },
+  { label: 'Job Work',      path: '/job-work/new',       modulePath: '/job-work',       icon: Briefcase,    color: 'bg-violet-500' },
 ];
 
 // Full menu sections shown in the bottom sheet
@@ -96,6 +98,19 @@ export default function MobileBottomNav() {
   const navigate  = useNavigate();
   const [fabOpen,  setFabOpen]  = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const disabledPaths = useModuleSettingsStore((state) => state.disabledPaths);
+
+  const quickAdd = useMemo(
+    () => QUICK_ADD.filter((a) => !disabledPaths.includes(a.modulePath)),
+    [disabledPaths]
+  );
+
+  const menuSections = useMemo(() => {
+    const disabled = new Set(disabledPaths);
+    return MENU_SECTIONS
+      .map((section) => ({ ...section, items: section.items.filter((item) => !disabled.has(item.path)) }))
+      .filter((section) => section.items.length > 0);
+  }, [disabledPaths]);
 
   const handleNav = (path) => {
     setFabOpen(false);
@@ -130,7 +145,7 @@ export default function MobileBottomNav() {
             transition={{ duration: 0.2 }}
             className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 lg:hidden"
           >
-            {QUICK_ADD.map((a, i) => (
+            {quickAdd.map((a, i) => (
               <motion.button
                 key={a.path}
                 initial={{ opacity: 0, scale: 0.7, y: 10 }}
@@ -179,7 +194,7 @@ export default function MobileBottomNav() {
 
             {/* Scrollable sections */}
             <div className="overflow-y-auto flex-1 px-4 pb-6 pt-2">
-              {MENU_SECTIONS.map((section) => (
+              {menuSections.map((section) => (
                 <div key={section.title} className="mb-4">
                   <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest px-2 mb-1.5">
                     {section.title}

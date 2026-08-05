@@ -142,12 +142,13 @@ router.delete('/workers/:id', authenticate, WorkerController.delete);
 
 // ==================== DAILY WORK ROUTES ====================
 router.get('/daily-work', authenticate, DailyWorkController.getAll);
+router.get('/daily-work/summary/metrics', authenticate, DailyWorkController.getSummary);
+router.get('/daily-work/monthly-summary', authenticate, DailyWorkController.getMonthlySummary);
+router.get('/daily-work/types/list', authenticate, DailyWorkController.getWorkTypes);
 router.get('/daily-work/:id', authenticate, DailyWorkController.getById);
 router.post('/daily-work', authenticate, DailyWorkController.create);
 router.put('/daily-work/:id', authenticate, DailyWorkController.update);
 router.delete('/daily-work/:id', authenticate, DailyWorkController.delete);
-router.get('/daily-work/summary/metrics', authenticate, DailyWorkController.getSummary);
-router.get('/daily-work/types/list', authenticate, DailyWorkController.getWorkTypes);
 
 // ==================== JOB WORK ROUTES ====================
 router.get('/job-work', authenticate, JobWorkController.getAll);

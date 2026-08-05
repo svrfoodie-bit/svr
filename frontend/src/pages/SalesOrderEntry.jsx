@@ -28,7 +28,7 @@ const SalesOrderEntry = () => {
   });
 
   const [lineItems, setLineItems] = useState([
-    { grade: 'Full Kaju', quantity: '', rate: '' },
+    { grade: 'Full Kaju', quantity: '', rate: '', overrideRate: false },
   ]);
 
   useEffect(() => {
@@ -118,6 +118,9 @@ const SalesOrderEntry = () => {
     if (field === 'grade') {
       const standardRate = gradePrices[value]?.pricePerKg;
       newLineItems[index].rate = standardRate ? String(standardRate) : '';
+      newLineItems[index].overrideRate = false;
+    } else if (field === 'rate') {
+      newLineItems[index].overrideRate = false;
     }
     setLineItems(newLineItems);
   };
@@ -125,7 +128,7 @@ const SalesOrderEntry = () => {
   const addLineItem = () => {
     const defaultGrade = availableGrades[0] || 'Full Kaju';
     const standardRate = gradePrices[defaultGrade]?.pricePerKg;
-    setLineItems([...lineItems, { grade: defaultGrade, quantity: '', rate: standardRate ? String(standardRate) : '' }]);
+    setLineItems([...lineItems, { grade: defaultGrade, quantity: '', rate: standardRate ? String(standardRate) : '', overrideRate: false }]);
   };
 
   const removeLineItem = (index) => {
@@ -177,8 +180,8 @@ const SalesOrderEntry = () => {
         return false;
       }
       const warning = getRateWarning(item);
-      if (warning) {
-        toast.error(`Line ${i + 1}: ${warning}`);
+      if (warning && !item.overrideRate) {
+        toast.error(`Line ${i + 1}: ${warning} (check "Override" to save anyway)`);
         return false;
       }
     }
@@ -380,7 +383,7 @@ const SalesOrderEntry = () => {
                 </div>
 
                 {/* Quantity */}
-                <div className="col-span-6 md:col-span-3">
+                <div className="col-span-6 md:col-span-2">
                   <label className="block text-xs font-semibold text-gray-700 mb-2">
                     Quantity (KG) <span className="text-red-500">*</span>
                   </label>
@@ -418,17 +421,35 @@ const SalesOrderEntry = () => {
                     </p>
                   )}
                   {getRateWarning(item) && (
-                    <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
-                      <AlertCircle size={12} /> {getRateWarning(item)}
-                    </p>
+                    <div
+                      className={`mt-1 flex items-center justify-between gap-2 px-2 py-1 rounded-md border text-[11px] ${
+                        item.overrideRate
+                          ? 'bg-amber-50 border-amber-200 text-amber-700'
+                          : 'bg-red-50 border-red-200 text-red-600'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1 min-w-0 truncate" title={getRateWarning(item)}>
+                        <AlertCircle size={12} className="flex-shrink-0" />
+                        <span className="truncate">{getRateWarning(item)}</span>
+                      </span>
+                      <label className="flex items-center gap-1 flex-shrink-0 font-semibold cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={item.overrideRate || false}
+                          onChange={(e) => handleLineItemChange(index, 'overrideRate', e.target.checked)}
+                          className="h-3 w-3 rounded border-gray-300 text-primary-600 focus:ring-primary-500/30"
+                        />
+                        Override
+                      </label>
+                    </div>
                   )}
                 </div>
 
                 {/* Line Amount */}
-                <div className="col-span-10 md:col-span-1 flex items-end">
+                <div className="col-span-10 md:col-span-2 flex items-end">
                   <div className="w-full">
                     <label className="block text-xs font-semibold text-gray-700 mb-2">Amount</label>
-                    <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm font-bold text-green-700 text-center">
+                    <div className="px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm font-bold text-green-700 text-center whitespace-nowrap overflow-hidden text-ellipsis">
                       ₹{calculateLineAmount(item.quantity, item.rate).toLocaleString('en-IN')}
                     </div>
                   </div>
@@ -447,6 +468,16 @@ const SalesOrderEntry = () => {
                 </div>
               </motion.div>
             ))}
+
+            {/* Add Item (bottom) */}
+            <button
+              type="button"
+              onClick={addLineItem}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 text-gray-500 rounded-xl hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50/50 transition-colors text-sm font-semibold"
+            >
+              <Plus size={16} />
+              <span>Add Item</span>
+            </button>
           </div>
 
           {/* Order Total */}

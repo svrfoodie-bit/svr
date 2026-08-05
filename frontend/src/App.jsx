@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useAuthStore } from './context/authStore';
 import { useThemeStore } from './context/themeStore';
 import { useCompanyStore } from './context/companyStore';
+import { useModuleSettingsStore } from './context/moduleSettingsStore';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Layouts
@@ -88,6 +89,7 @@ import CapitalInvestments from './pages/CapitalInvestments';
 import GradeManagement from './pages/GradeManagement';
 import AttendanceEntry from './pages/AttendanceEntry';
 import PayrollDashboard from './pages/PayrollDashboard';
+import WorkerPayrollDetail from './pages/WorkerPayrollDetail';
 import CustomerLedger from './pages/CustomerLedger';
 import SupplierLedger from './pages/SupplierLedger';
 
@@ -116,11 +118,15 @@ function App() {
   const { initTheme } = useThemeStore();
   const { isAuthenticated } = useAuthStore();
   const { loadCompanyInfo } = useCompanyStore();
+  const { loadModuleSettings } = useModuleSettingsStore();
 
   useEffect(() => { initTheme(); }, [initTheme]);
   useEffect(() => {
-    if (isAuthenticated) loadCompanyInfo().catch(() => {});
-  }, [isAuthenticated, loadCompanyInfo]);
+    if (isAuthenticated) {
+      loadCompanyInfo().catch(() => {});
+      loadModuleSettings().catch(() => {});
+    }
+  }, [isAuthenticated, loadCompanyInfo, loadModuleSettings]);
 
   return (
     <ErrorBoundary>
@@ -231,6 +237,7 @@ function App() {
         {/* Phase 1 - Attendance & Payroll */}
         <Route path="attendance" element={<AttendanceEntry />} />
         <Route path="payroll" element={<PayrollDashboard />} />
+        <Route path="payroll/worker/:workerId" element={<WorkerPayrollDetail />} />
 
         {/* Phase 1 - Customer & Supplier Ledgers */}
         <Route path="customer-ledger" element={<CustomerLedger />} />

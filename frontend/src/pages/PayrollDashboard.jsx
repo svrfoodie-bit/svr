@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, IndianRupee, CheckCircle, Clock, Download, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { attendanceService } from '../services/attendanceService';
+import { dailyWorkService } from '../services/dailyWorkService';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 const PayrollDashboard = () => {
+  const navigate = useNavigate();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -24,7 +27,7 @@ const PayrollDashboard = () => {
     setLoading(true);
     try {
       const [summaryData, payrollData] = await Promise.all([
-        attendanceService.getMonthlySummary(year, month),
+        dailyWorkService.getMonthlySummary(year, month),
         attendanceService.getMonthlyPayroll(year, month),
       ]);
       setSummary(summaryData);
@@ -139,10 +142,9 @@ const PayrollDashboard = () => {
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600">Worker</th>
-                  <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600">Present</th>
-                  <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600">Half Day</th>
-                  <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600">Absent</th>
-                  <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600">OT Hrs</th>
+                  <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600">Work Days</th>
+                  <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600">Total KG</th>
+                  <th className="px-5 py-3 text-right text-xs font-semibold text-gray-600">Bonus</th>
                   <th className="px-5 py-3 text-right text-xs font-semibold text-gray-600">Basic</th>
                   <th className="px-5 py-3 text-right text-xs font-semibold text-gray-600">Advance</th>
                   <th className="px-5 py-3 text-right text-xs font-semibold text-gray-600">Net Salary</th>
@@ -160,13 +162,21 @@ const PayrollDashboard = () => {
                     className="hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-5 py-4">
-                      <p className="font-medium text-gray-900">{row.workerName}</p>
-                      <p className="text-xs text-gray-500">{row.role}</p>
+                      <button
+                        onClick={() => navigate(`/payroll/worker/${row.workerId}?year=${year}&month=${month}`)}
+                        className="text-left hover:underline"
+                      >
+                        <p className="font-medium text-primary-700">{row.workerName}</p>
+                        <p className="text-xs text-gray-500">{row.role}</p>
+                      </button>
                     </td>
-                    <td className="px-5 py-4 text-center text-sm font-semibold text-green-700">{row.presentDays || 0}</td>
-                    <td className="px-5 py-4 text-center text-sm font-semibold text-yellow-700">{row.halfDays || 0}</td>
-                    <td className="px-5 py-4 text-center text-sm font-semibold text-red-700">{row.absentDays || 0}</td>
-                    <td className="px-5 py-4 text-center text-sm text-gray-700">{parseFloat(row.totalOvertimeHours || 0).toFixed(1)}</td>
+                    <td className="px-5 py-4 text-center text-sm font-semibold text-gray-700">{row.workDays || 0}</td>
+                    <td className="px-5 py-4 text-center text-sm font-semibold text-gray-700">{parseFloat(row.totalQuantity || 0).toLocaleString('en-IN')}</td>
+                    <td className="px-5 py-4 text-right text-sm text-green-600">
+                      {row.payroll && parseFloat(row.payroll.bonus) > 0
+                        ? `₹${parseFloat(row.payroll.bonus).toLocaleString('en-IN')}`
+                        : '—'}
+                    </td>
                     <td className="px-5 py-4 text-right text-sm text-gray-700">
                       {row.payroll ? `₹${parseFloat(row.payroll.basicSalary).toLocaleString('en-IN')}` : '—'}
                     </td>
@@ -202,14 +212,24 @@ const PayrollDashboard = () => {
                           Generate
                         </button>
                       ) : row.payroll.status === 'Draft' ? (
-                        <button
-                          onClick={() => markPaid(row.payroll.id)}
-                          disabled={paying[row.payroll.id]}
-                          className="flex items-center gap-1 mx-auto px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-                        >
-                          <CheckCircle size={12} />
-                          {paying[row.payroll.id] ? 'Saving...' : 'Mark Paid'}
-                        </button>
+                        <div className="flex items-center gap-2 justify-center">
+                          <button
+                            onClick={() => generateAndSave(row.workerId)}
+                            disabled={generating[row.workerId]}
+                            title="Recalculate from latest work log"
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 text-gray-700 text-xs rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                          >
+                            <RefreshCw size={12} className={generating[row.workerId] ? 'animate-spin' : ''} />
+                          </button>
+                          <button
+                            onClick={() => markPaid(row.payroll.id)}
+                            disabled={paying[row.payroll.id]}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                          >
+                            <CheckCircle size={12} />
+                            {paying[row.payroll.id] ? 'Saving...' : 'Mark Paid'}
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-xs text-green-600 flex items-center gap-1 justify-center">
                           <CheckCircle size={12} /> Paid
@@ -222,7 +242,7 @@ const PayrollDashboard = () => {
               {payroll.length > 0 && (
                 <tfoot>
                   <tr className="bg-primary-50 font-semibold">
-                    <td colSpan={7} className="px-5 py-3 text-sm text-gray-700">Total Payroll — {MONTHS[month - 1]} {year}</td>
+                    <td colSpan={6} className="px-5 py-3 text-sm text-gray-700">Total Payroll — {MONTHS[month - 1]} {year}</td>
                     <td className="px-5 py-3 text-right text-sm text-primary-700">
                       ₹{totalNetSalary.toLocaleString('en-IN')}
                     </td>

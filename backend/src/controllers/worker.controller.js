@@ -158,6 +158,17 @@ class DailyWorkController {
   getWorkTypes(req, res) {
     res.json({ success: true, data: DailyWork.getAllWorkTypes() });
   }
+
+  async getMonthlySummary(req, res, next) {
+    try {
+      const year = parseInt(req.query.year) || new Date().getFullYear();
+      const month = parseInt(req.query.month) || new Date().getMonth() + 1;
+      const summary = await DailyWork.getMonthlySummary(year, month);
+      res.json({ success: true, data: summary });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = { WorkerController: new WorkerController(), DailyWorkController: new DailyWorkController() };

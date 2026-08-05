@@ -59,7 +59,7 @@ const JobWorkEntry = () => {
       const jobWork = await jobWorkService.getById(id);
       if (jobWork) {
         setFormData({
-          jobDate: jobWork.jobDate,
+          jobDate: String(jobWork.jobDate || '').slice(0, 10),
           jobWorkerName: jobWork.jobWorkerName,
           cashewType: jobWork.cashewType,
           status: jobWork.status || 'In Progress',

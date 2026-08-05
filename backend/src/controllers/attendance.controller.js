@@ -75,7 +75,7 @@ class AttendanceController {
       }
       const payrollData = await Payroll.generate(workerId, parseInt(year), parseInt(month));
       if (!payrollData) {
-        return res.status(404).json({ success: false, message: 'Worker not found or no attendance data' });
+        return res.status(404).json({ success: false, message: 'Worker not found or no work log data' });
       }
       res.json({ success: true, data: payrollData });
     } catch (error) {
