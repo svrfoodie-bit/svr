@@ -59,7 +59,8 @@ api.interceptors.response.use(
     } else if (error.response?.status === 404) {
       showHandledError('Resource not found.');
     } else if (error.response?.status >= 500) {
-      showHandledError('Server error. Please try again later.\nIf this keeps happening, refresh the page or restart the backend.');
+      const detail = error.response?.data?.message;
+      showHandledError(`Server error. Please try again later.${detail ? `\n${detail}` : ''}`);
     } else if (!error.response) {
       showHandledError('Cannot reach server.\nCheck whether the backend is running and reachable.');
     } else {

@@ -1,0 +1,25 @@
+{"at":"2026-10-03T05:37:37.707Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:37:42.103Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:37:47.040Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:37:51.390Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:37:56.543Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:38:03.802Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:38:11.208Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:38:16.375Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:38:23.215Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:38:32.166Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:38:46.223Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:38:49.945Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:38:54.531Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T05:39:02.063Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T18:48:56.672Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T18:49:07.258Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T18:49:28.277Z","decision":"allow","spec":null,"tool":"Write","files":["d:\\projects\\svr\\backend\\src\\utils\\schemaHelpers.js"],"more":0,"reason":"no spec names branch main"}
+{"at":"2026-10-03T18:49:38.725Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T18:49:46.898Z","decision":"allow","spec":null,"tool":"Edit","files":["d:\\projects\\svr\\backend\\scripts\\migrate.js"],"more":0,"reason":"no spec names branch main"}
+{"at":"2026-10-03T18:49:55.810Z","decision":"allow","spec":null,"tool":"Edit","files":["d:\\projects\\svr\\backend\\scripts\\migrate.js"],"more":0,"reason":"no spec names branch main"}
+{"at":"2026-10-03T18:49:56.998Z","decision":"allow","spec":null,"tool":"Edit","files":["d:\\projects\\svr\\backend\\src\\models\\Lead.model.js"],"more":0,"reason":"no spec names branch main"}
+{"at":"2026-10-03T18:49:58.179Z","decision":"allow","spec":null,"tool":"Edit","files":["d:\\projects\\svr\\backend\\src\\models\\LeadCampaign.model.js"],"more":0,"reason":"no spec names branch main"}
+{"at":"2026-10-03T18:50:06.289Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}
+{"at":"2026-10-03T18:50:13.478Z","decision":"allow","spec":null,"tool":"Edit","files":["d:\\projects\\svr\\frontend\\src\\services\\api.js"],"more":0,"reason":"no spec names branch main"}
+{"at":"2026-10-03T18:50:16.467Z","decision":"allow","spec":null,"tool":"Bash","files":[],"more":0,"reason":"no file paths in this call"}

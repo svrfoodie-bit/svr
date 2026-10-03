@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
 require('dotenv').config();
+const { runPortableSql } = require('../src/utils/schemaHelpers');
 
 const MIGRATIONS_DIR = path.join(__dirname, '..', 'migrations');
 
@@ -84,7 +85,7 @@ async function main() {
     const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
     console.log(`Applying ${file}...`);
     try {
-      await conn.query(sql);
+      await runPortableSql(conn, sql);
       await conn.query('INSERT INTO schema_migrations (name) VALUES (?)', [file]);
       console.log(`  OK`);
     } catch (err) {

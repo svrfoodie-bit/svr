@@ -1,11 +1,12 @@
 const { promisePool } = require('../config/database');
+const { addColumnIfMissing } = require('../utils/schemaHelpers');
 
 // Ensure address & category columns exist (run once)
 const ensureColumns = async () => {
   try {
-    await promisePool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS address VARCHAR(255) DEFAULT NULL`);
-    await promisePool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT NULL`);
-    await promisePool.query(`ALTER TABLE leads ADD COLUMN IF NOT EXISTS normalizedPhone VARCHAR(20) DEFAULT NULL`);
+    await addColumnIfMissing(promisePool, 'leads', 'address', 'VARCHAR(255) DEFAULT NULL');
+    await addColumnIfMissing(promisePool, 'leads', 'category', 'VARCHAR(100) DEFAULT NULL');
+    await addColumnIfMissing(promisePool, 'leads', 'normalizedPhone', 'VARCHAR(20) DEFAULT NULL');
   } catch {}
 };
 ensureColumns();
