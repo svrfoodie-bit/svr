@@ -115,12 +115,15 @@ class DailyWorkController {
 
   async update(req, res, next) {
     try {
-      const success = await DailyWork.update(req.params.id, req.body);
+      const { success, batchAdjustmentSkipped } = await DailyWork.update(req.params.id, req.body);
       if (!success) {
         return res.status(404).json({ success: false, message: 'Daily work not found' });
       }
       const work = await DailyWork.getById(req.params.id);
-      res.json({ success: true, message: 'Daily work updated', data: work });
+      const message = batchAdjustmentSkipped
+        ? 'Daily work updated (linked production batch is already closed, so its quantity was not changed)'
+        : 'Daily work updated';
+      res.json({ success: true, message, data: work });
     } catch (error) {
       next(error);
     }

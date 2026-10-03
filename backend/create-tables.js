@@ -119,6 +119,7 @@ const createTables = async () => {
         workerId INT NOT NULL,
         workDate DATE NOT NULL,
         workType VARCHAR(50),
+        batchId INT NULL,
         assignedQuantity DECIMAL(10, 2),
         quantity DECIMAL(10, 2),
         rate DECIMAL(10, 2),
@@ -132,7 +133,8 @@ const createTables = async () => {
         createdBy INT,
         FOREIGN KEY (workerId) REFERENCES workers(id),
         INDEX(workerId),
-        INDEX(workDate)
+        INDEX(workDate),
+        INDEX(batchId)
       )
     `);
     console.log('✓ Daily Work table created');

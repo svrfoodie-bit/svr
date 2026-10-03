@@ -162,6 +162,9 @@ const DailyWorkList = () => {
             {work.workType}
             {work.bonusEligible && <Award className="inline-block w-3 h-3 ml-1" />}
           </span>
+          {work.batchNumber && (
+            <p className="mt-1 text-[10px] text-gray-500">Batch: {work.batchNumber}</p>
+          )}
         </td>
         <td className="px-3 py-2">
           <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-md border ${getStatusMeta(work.status).className}`}>

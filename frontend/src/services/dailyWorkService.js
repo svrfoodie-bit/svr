@@ -12,6 +12,10 @@ export const WORK_TYPES = {
   Drying: { bonusEligible: false, defaultRate: 8 },
 };
 
+// workType -> processing_batches rawType it auto-links to. Mirrors
+// backend ProcessingBatch.WORKTYPE_TO_RAWTYPE.
+export const BATCH_LINKED_WORK_TYPES = { Shelling: 'RWA', Peeling: 'White' };
+
 const BONUS_THRESHOLD = 50;
 const BONUS_RATE = 2;
 

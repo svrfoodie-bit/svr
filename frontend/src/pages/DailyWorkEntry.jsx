@@ -3,7 +3,8 @@ import { Save, X, Award, Plus } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import useKeyboardSave from '../hooks/useKeyboardSave';
-import { dailyWorkService, WORK_TYPES } from '../services/dailyWorkService';
+import { dailyWorkService, WORK_TYPES, BATCH_LINKED_WORK_TYPES } from '../services/dailyWorkService';
+import { processingBatchService, getRawTypeLabel } from '../services/processingBatchService';
 import { workerService } from '../services/workerService';
 import { showFallbackError } from '../utils/errorHandling';
 import Modal from '../components/ui/Modal';
@@ -18,11 +19,13 @@ const DailyWorkEntry = () => {
   const [showAddWorker, setShowAddWorker] = useState(false);
   const [newWorkerName, setNewWorkerName] = useState('');
   const [addingWorker, setAddingWorker] = useState(false);
+  const [openBatches, setOpenBatches] = useState([]);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     workerId: '',
     workerName: '',
     workType: 'Shelling',
+    batchId: '',
     assignedQuantity: '',
     completedQuantity: '0',
     rate: '20',
@@ -37,6 +40,28 @@ const DailyWorkEntry = () => {
       loadDailyWorkData();
     }
   }, [id]);
+
+  const batchRawType = BATCH_LINKED_WORK_TYPES[formData.workType];
+
+  useEffect(() => {
+    if (!batchRawType) {
+      setOpenBatches([]);
+      return undefined;
+    }
+    let cancelled = false;
+    processingBatchService.getAll({ status: 'Open', rawType: batchRawType })
+      .then((batches) => {
+        if (!cancelled) setOpenBatches(batches);
+      })
+      .catch(() => {
+        if (!cancelled) setOpenBatches([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [batchRawType]);
+
+  const todaysBatch = openBatches.find((batch) => String(batch.date).slice(0, 10) === formData.date);
 
   const loadWorkers = async () => {
     try {
@@ -94,6 +119,7 @@ const DailyWorkEntry = () => {
           workerId: work.workerId.toString(),
           workerName: work.workerName || '',
           workType: work.workType,
+          batchId: work.batchId ? String(work.batchId) : '',
           assignedQuantity: (work.assignedQuantity ?? work.quantity)?.toString() || '',
           completedQuantity: (work.completedQuantity ?? work.quantity)?.toString() || '',
           rate: work.rate?.toString() || '',
@@ -188,6 +214,7 @@ const DailyWorkEntry = () => {
       const workData = {
         ...formData,
         workerId: parseInt(formData.workerId, 10),
+        batchId: formData.batchId ? parseInt(formData.batchId, 10) : null,
         assignedQuantity,
         quantity: completedQuantity,
         rate,
@@ -308,6 +335,34 @@ const DailyWorkEntry = () => {
               </div>
             )}
           </div>
+
+          {batchRawType && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Production Batch
+              </label>
+              <select
+                name="batchId"
+                value={formData.batchId}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all"
+              >
+                <option value="">
+                  {todaysBatch
+                    ? `Auto - links to ${todaysBatch.batchId} (today's ${getRawTypeLabel(batchRawType)} batch)`
+                    : `Auto - creates a new ${getRawTypeLabel(batchRawType)} batch`}
+                </option>
+                {openBatches.map((batch) => (
+                  <option key={batch.id} value={batch.id}>
+                    {batch.batchId} - {String(batch.date).slice(0, 10)} ({batch.rawInputQuantity || 0} KG so far)
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-gray-500">
+                The quantity assigned below is added to this batch's raw input. Leave on Auto to use (or start) today's {getRawTypeLabel(batchRawType)} batch, or pick another open batch to count this work toward instead.
+              </p>
+            </div>
+          )}
 
           {isEditMode && (
             <div>

@@ -1,4 +1,5 @@
 const { promisePool } = require('../config/database');
+const ProcessingBatch = require('./ProcessingBatch.model');
 
 class DailyWork {
   static getStatusFromQuantities(assignedQuantity, completedQuantity, fallbackStatus) {
@@ -16,15 +17,17 @@ class DailyWork {
     const bonusAmount = quantity * bonusRate;
     const totalAmount = data.totalAmount ?? (baseWage + bonusAmount);
     const status = this.getStatusFromQuantities(assignedQuantity, quantity, data.status);
+    const batchId = await this.resolveBatchLinkForCreate(data, assignedQuantity);
     const query = `
-      INSERT INTO daily_work (workerId, workDate, workType, assignedQuantity, quantity, rate, bonusRate,
+      INSERT INTO daily_work (workerId, workDate, workType, batchId, assignedQuantity, quantity, rate, bonusRate,
                               totalAmount, bonusAmount, bonusEligible, status, notes, createdBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const [result] = await promisePool.query(query, [
       data.workerId,
       data.workDate || data.date,
       data.workType,
+      batchId,
       assignedQuantity,
       quantity,
       rate,
@@ -39,11 +42,35 @@ class DailyWork {
     return result.insertId;
   }
 
+  // Shelling/Peeling logs auto-link to (and top up) the day's matching
+  // Production Batch; other work types are left untouched (returns null).
+  static async resolveBatchLinkForCreate(data, assignedQuantity) {
+    const rawType = ProcessingBatch.WORKTYPE_TO_RAWTYPE[data.workType];
+    if (!rawType || assignedQuantity <= 0) return null;
+
+    if (data.batchId) {
+      const manualBatch = await ProcessingBatch.getOpenBatchByIdAndGrade(data.batchId, rawType);
+      if (manualBatch) {
+        await ProcessingBatch.adjustRawInputQuantity(manualBatch.id, assignedQuantity);
+        return manualBatch.id;
+      }
+      // Selected batch is no longer open/valid - fall back to auto match.
+    }
+
+    return ProcessingBatch.findOrCreateForWorkLog({
+      workDate: data.workDate || data.date,
+      rawType,
+      quantityDelta: assignedQuantity,
+      createdBy: data.createdBy || 1,
+    });
+  }
+
   static async getAll(filters = {}) {
     let query = `
-      SELECT 
+      SELECT
         dw.*,
         w.name as workerName,
+        pb.batchNumber as batchNumber,
         COALESCE(dw.assignedQuantity, dw.quantity, 0) as assignedQuantity,
         COALESCE(dw.quantity, 0) as completedQuantity,
         GREATEST(COALESCE(dw.assignedQuantity, dw.quantity, 0) - COALESCE(dw.quantity, 0), 0) as pendingQuantity,
@@ -52,6 +79,7 @@ class DailyWork {
         COALESCE(dw.totalAmount, 0) as totalPay
       FROM daily_work dw
       JOIN workers w ON dw.workerId = w.id
+      LEFT JOIN processing_batches pb ON dw.batchId = pb.id
       WHERE 1=1
     `;
     const params = [];
@@ -90,6 +118,7 @@ class DailyWork {
     const [rows] = await promisePool.query(`
       SELECT
         dw.*,
+        pb.batchNumber as batchNumber,
         COALESCE(dw.status, 'In Progress') as status,
         COALESCE(dw.assignedQuantity, dw.quantity, 0) as assignedQuantity,
         COALESCE(dw.quantity, 0) as completedQuantity,
@@ -98,6 +127,7 @@ class DailyWork {
         COALESCE(dw.bonusAmount, GREATEST(COALESCE(dw.totalAmount, 0) - (COALESCE(dw.quantity, 0) * COALESCE(dw.rate, 0)), 0)) as bonusAmount,
         COALESCE(dw.totalAmount, 0) as totalPay
       FROM daily_work dw
+      LEFT JOIN processing_batches pb ON dw.batchId = pb.id
       WHERE dw.id = ?
     `, [id]);
     return rows[0] || null;
@@ -109,7 +139,7 @@ class DailyWork {
 
     const [existingRows] = await promisePool.query('SELECT * FROM daily_work WHERE id = ?', [id]);
     const existingRow = existingRows[0];
-    if (!existingRow) return false;
+    if (!existingRow) return { success: false, batchAdjustmentSkipped: false };
 
     // Normalize field names from frontend
     if (data.date) data.workDate = data.date;
@@ -125,6 +155,10 @@ class DailyWork {
     const assignedQuantity = data.assignedQuantity !== undefined
       ? (parseFloat(data.assignedQuantity) || quantity)
       : (parseFloat(existingRow.assignedQuantity) || quantity);
+
+    const { batchId: nextBatchId, batchAdjustmentSkipped } = await this.syncBatchLinkForUpdate(existingRow, data, assignedQuantity);
+    if (nextBatchId !== undefined) data.batchId = nextBatchId;
+
     const rate = data.rate !== undefined ? (parseFloat(data.rate) || 0) : (parseFloat(existingRow.rate) || 0);
     if (data.bonusRate !== undefined) {
       data.bonusAmount = quantity * (parseFloat(data.bonusRate) || 0);
@@ -140,20 +174,99 @@ class DailyWork {
     }
 
     Object.entries(data).forEach(([key, value]) => {
-      if (['workerId', 'workDate', 'workType', 'assignedQuantity', 'quantity', 'rate', 'bonusRate', 'totalAmount', 'bonusAmount', 'bonusEligible', 'status', 'notes'].includes(key)) {
+      if (['workerId', 'workDate', 'workType', 'batchId', 'assignedQuantity', 'quantity', 'rate', 'bonusRate', 'totalAmount', 'bonusAmount', 'bonusEligible', 'status', 'notes'].includes(key)) {
         updates.push(`${key} = ?`);
         params.push(value);
       }
     });
 
-    if (updates.length === 0) return false;
+    if (updates.length === 0) return { success: false, batchAdjustmentSkipped };
     params.push(id);
     const query = `UPDATE daily_work SET ${updates.join(', ')}, updatedAt = NOW() WHERE id = ?`;
     const [result] = await promisePool.query(query, params);
-    return result.affectedRows > 0;
+    return { success: result.affectedRows > 0, batchAdjustmentSkipped };
+  }
+
+  // Keeps a Shelling/Peeling log's linked Production Batch in sync when its
+  // assignedQuantity, workType, or manual batch selection changes. Returns
+  // { batchId } when the daily_work.batchId column should be written
+  // (including null to clear it), or {} to leave it untouched. If the
+  // previously-linked batch has already been closed (Completed/Cancelled),
+  // its rawInputQuantity is left alone and batchAdjustmentSkipped is true.
+  static async syncBatchLinkForUpdate(existingRow, data, newAssignedQuantity) {
+    const oldWorkType = existingRow.workType;
+    const newWorkType = data.workType !== undefined ? data.workType : oldWorkType;
+    const oldRawType = ProcessingBatch.WORKTYPE_TO_RAWTYPE[oldWorkType];
+    const newRawType = ProcessingBatch.WORKTYPE_TO_RAWTYPE[newWorkType];
+
+    if (!oldRawType && !newRawType) {
+      return { batchAdjustmentSkipped: false };
+    }
+
+    const oldAssignedQuantity = parseFloat(existingRow.assignedQuantity) || 0;
+    const oldBatchId = existingRow.batchId || null;
+    const manualBatchId = data.batchId !== undefined ? data.batchId : undefined;
+    const workDate = data.workDate || data.date || existingRow.workDate;
+    const createdBy = data.createdBy || existingRow.createdBy || 1;
+    let batchAdjustmentSkipped = false;
+
+    const sameRawTypeNoManualSwitch = oldRawType && newRawType && oldRawType === newRawType
+      && (manualBatchId === undefined || manualBatchId === oldBatchId);
+
+    if (sameRawTypeNoManualSwitch) {
+      if (!oldBatchId) {
+        const batchId = await ProcessingBatch.findOrCreateForWorkLog({
+          workDate, rawType: newRawType, quantityDelta: newAssignedQuantity, createdBy,
+        });
+        return { batchId, batchAdjustmentSkipped };
+      }
+      const delta = newAssignedQuantity - oldAssignedQuantity;
+      if (delta !== 0) {
+        const applied = await ProcessingBatch.adjustRawInputQuantity(oldBatchId, delta);
+        if (!applied) batchAdjustmentSkipped = true;
+      }
+      return { batchAdjustmentSkipped };
+    }
+
+    // Process changed, newly tracked, no longer tracked, or manually
+    // redirected to a different batch: reverse the old contribution (if
+    // any) and apply the new one fresh.
+    if (oldRawType && oldBatchId) {
+      const applied = await ProcessingBatch.adjustRawInputQuantity(oldBatchId, -oldAssignedQuantity);
+      if (!applied) batchAdjustmentSkipped = true;
+    }
+
+    if (!newRawType || newAssignedQuantity <= 0) {
+      return { batchId: null, batchAdjustmentSkipped };
+    }
+
+    if (manualBatchId) {
+      const manualBatch = await ProcessingBatch.getOpenBatchByIdAndGrade(manualBatchId, newRawType);
+      if (manualBatch) {
+        await ProcessingBatch.adjustRawInputQuantity(manualBatch.id, newAssignedQuantity);
+        return { batchId: manualBatch.id, batchAdjustmentSkipped };
+      }
+    }
+
+    const batchId = await ProcessingBatch.findOrCreateForWorkLog({
+      workDate, rawType: newRawType, quantityDelta: newAssignedQuantity, createdBy,
+    });
+    return { batchId, batchAdjustmentSkipped };
   }
 
   static async delete(id) {
+    const [rows] = await promisePool.query(
+      'SELECT workType, batchId, assignedQuantity FROM daily_work WHERE id = ?',
+      [id]
+    );
+    const row = rows[0];
+    if (row && row.batchId && ProcessingBatch.WORKTYPE_TO_RAWTYPE[row.workType]) {
+      const assignedQuantity = parseFloat(row.assignedQuantity) || 0;
+      if (assignedQuantity > 0) {
+        await ProcessingBatch.adjustRawInputQuantity(row.batchId, -assignedQuantity);
+      }
+    }
+
     const [result] = await promisePool.query('DELETE FROM daily_work WHERE id = ?', [id]);
     return result.affectedRows > 0;
   }

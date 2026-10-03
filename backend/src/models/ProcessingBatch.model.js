@@ -1,6 +1,60 @@
 const { promisePool } = require('../config/database');
 
 class ProcessingBatch {
+  // Daily Work workType -> processing_batches.grade (rawType) this work feeds.
+  static WORKTYPE_TO_RAWTYPE = { Shelling: 'RWA', Peeling: 'White' };
+
+  // Finds today's (workDate's) open batch for a rawType, or creates one, then
+  // adds quantityDelta to its rawInputQuantity. Used to auto-link Shelling/
+  // Peeling Daily Work Log entries to a Production Batch.
+  static async findOrCreateForWorkLog({ workDate, rawType, quantityDelta, createdBy }) {
+    const [rows] = await promisePool.query(
+      `SELECT id FROM processing_batches
+       WHERE grade = ? AND startDate = ? AND status = 'In Progress' LIMIT 1`,
+      [rawType, workDate]
+    );
+
+    if (rows[0]) {
+      await promisePool.query(
+        'UPDATE processing_batches SET rawInputQuantity = rawInputQuantity + ?, updatedAt = NOW() WHERE id = ?',
+        [quantityDelta, rows[0].id]
+      );
+      return rows[0].id;
+    }
+
+    return ProcessingBatch.create({
+      startDate: workDate,
+      rawInputQuantity: quantityDelta,
+      grade: rawType,
+      createdBy,
+    });
+  }
+
+  // Applies a +/- delta to a specific batch's rawInputQuantity, but only
+  // while it's still 'In Progress' (a Completed/Cancelled batch is a closed
+  // record and must not be silently mutated by Daily Work Log edits/deletes).
+  // Returns true if the adjustment was applied, false if it was skipped.
+  static async adjustRawInputQuantity(batchId, delta) {
+    if (!batchId || !delta) return true;
+    const [result] = await promisePool.query(
+      `UPDATE processing_batches
+       SET rawInputQuantity = GREATEST(rawInputQuantity + ?, 0), updatedAt = NOW()
+       WHERE id = ? AND status = 'In Progress'`,
+      [delta, batchId]
+    );
+    return result.affectedRows > 0;
+  }
+
+  // Validates a manually-selected batchId is a real, open batch of the
+  // expected rawType before letting a Daily Work Log link to it.
+  static async getOpenBatchByIdAndGrade(batchId, rawType) {
+    const [rows] = await promisePool.query(
+      `SELECT * FROM processing_batches WHERE id = ? AND grade = ? AND status = 'In Progress'`,
+      [batchId, rawType]
+    );
+    return rows[0] || null;
+  }
+
   static async generateBatchNumber() {
     const [rows] = await promisePool.query('SELECT COUNT(*) as count FROM processing_batches');
     const count = rows[0].count + 1;
