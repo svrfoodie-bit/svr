@@ -15,6 +15,9 @@ const Settings = require('./models/Settings.model');
 
 // Initialize Express app
 const app = express();
+// Render (and most hosts) sit behind one reverse proxy; trust it so
+// req.ip / express-rate-limit see the real client IP from X-Forwarded-For.
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
 const API_VERSION = process.env.API_VERSION || 'v1';
 
