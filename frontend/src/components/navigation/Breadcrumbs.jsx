@@ -38,6 +38,11 @@ const SEGMENT_LABELS = {
   parcels: 'Parcels',
   new: 'New',
   edit: 'Edit',
+  'cashew-flow-x': 'CashewFlowX',
+  customer: 'Customer',
+  'stock-entry': 'Add Stock',
+  'payment-entry': 'Add Payment',
+  'cashew-types': 'Cashew Types',
 };
 
 const toTitleCase = (value) =>

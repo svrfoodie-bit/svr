@@ -68,7 +68,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       initial={false}
       animate={{ width: isOpen ? (isCollapsed ? 68 : 260) : 0, opacity: isOpen ? 1 : 0 }}
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-      className="bg-gray-900 text-white overflow-hidden shadow-2xl relative border-r border-gray-800 flex-shrink-0"
+      // Mobile: fixed drawer above the backdrop (z-[45]) and bottom nav (z-40). Desktop: in-flow column.
+      className="bg-gray-900 text-white overflow-hidden shadow-2xl fixed inset-y-0 left-0 z-50 lg:relative lg:inset-auto lg:z-auto border-r border-gray-800 flex-shrink-0"
     >
       <div className="h-full flex flex-col">
 

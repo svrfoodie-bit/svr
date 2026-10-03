@@ -61,7 +61,11 @@ export default function OnboardingChecklist() {
       syncCompleted(ids);
       // Mark "explore dashboard" as done always (they're already here)
       syncCompleted(['explore_dashboard']);
-      if (!dismissed) show();
+      if (!dismissed) {
+        show();
+        // On phones/tablets the expanded panel covers most of the screen; start as the pill.
+        if (window.innerWidth < 1024) minimize();
+      }
       setReady(true);
     }, 1200);
 
@@ -85,7 +89,9 @@ export default function OnboardingChecklist() {
   };
 
   return (
-    <div className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-40 w-80">
+    // Never wider than the screen; the empty part of this box (e.g. beside the
+    // minimised pill) must not swallow taps meant for the page underneath.
+    <div className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-40 w-80 max-w-[calc(100vw-2rem)] pointer-events-none [&>*]:pointer-events-auto">
       <AnimatePresence mode="wait">
         {minimized ? (
           /* ── Minimised pill ─────────────────────────────────────────── */

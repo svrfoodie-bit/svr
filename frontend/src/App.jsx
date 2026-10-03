@@ -108,6 +108,13 @@ import PrintInvoice from './pages/PrintInvoice';
 import SeasonPlanning from './pages/SeasonPlanning';
 import SeasonEntry from './pages/SeasonEntry';
 
+// CashewFlowX - independent customer stock & settlement module
+import CashewFlowXDashboard from './pages/cashewFlowX/CashewFlowXDashboard';
+import CashewFlowXCustomerView from './pages/cashewFlowX/CashewFlowXCustomerView';
+import CashewFlowXCashewTypeManager from './pages/cashewFlowX/CashewFlowXCashewTypeManager';
+import CashewFlowXStockEntryPage from './pages/cashewFlowX/CashewFlowXStockEntryPage';
+import CashewFlowXPaymentEntryPage from './pages/cashewFlowX/CashewFlowXPaymentEntryPage';
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
@@ -249,6 +256,15 @@ function App() {
         <Route path="season-planning" element={<SeasonPlanning />} />
         <Route path="seasons/new" element={<SeasonEntry />} />
         <Route path="seasons/edit/:id" element={<SeasonEntry />} />
+
+        {/* CashewFlowX */}
+        <Route path="cashew-flow-x" element={<CashewFlowXDashboard />} />
+        <Route path="cashew-flow-x/customers" element={<CashewFlowXDashboard />} />
+        <Route path="cashew-flow-x/customer" element={<Navigate to="/cashew-flow-x/customers" replace />} />
+        <Route path="cashew-flow-x/customer/:id" element={<CashewFlowXCustomerView />} />
+        <Route path="cashew-flow-x/stock-entry" element={<CashewFlowXStockEntryPage />} />
+        <Route path="cashew-flow-x/payment-entry" element={<CashewFlowXPaymentEntryPage />} />
+        <Route path="cashew-flow-x/cashew-types" element={<CashewFlowXCashewTypeManager />} />
 
       </Route>
 

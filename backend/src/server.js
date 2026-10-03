@@ -113,6 +113,9 @@ app.get('/health', async (req, res) => {
   });
 });
 
+// CashewFlowX - independent customer stock & settlement module
+app.use(`/api/${API_VERSION}/cashew-flow-x`, require('./routes/cashewFlowX.routes'));
+
 // API Routes - All Business Routes (Auth, Customers, Workers, Sales, etc.)
 app.use(`/api/${API_VERSION}`, require('./routes/business.routes'));
 
