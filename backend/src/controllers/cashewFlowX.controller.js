@@ -2,6 +2,8 @@ const CashewFlowXCustomer = require('../models/CashewFlowXCustomer.model');
 const CashewFlowXCashewType = require('../models/CashewFlowXCashewType.model');
 const CashewFlowXStockEntry = require('../models/CashewFlowXStockEntry.model');
 const CashewFlowXPaymentEntry = require('../models/CashewFlowXPaymentEntry.model');
+const CashewFlowXWhatsAppMessage = require('../models/CashewFlowXWhatsAppMessage.model');
+const { notifyStockGiven, notifyPaymentReceived } = require('../services/cashewFlowXWhatsApp.service');
 const {
   CASHEW_FLOW_X_PAYMENT_MODES,
   roundCashewFlowXMoney,
@@ -105,10 +107,11 @@ class CashewFlowXCustomerController {
       const customer = await CashewFlowXCustomer.getById(req.params.id);
       if (!customer) return notFound(res, 'CashewFlowX customer not found');
 
-      const [stockRows, paymentRows, typeRows] = await Promise.all([
+      const [stockRows, paymentRows, typeRows, whatsappMessages] = await Promise.all([
         CashewFlowXStockEntry.getByCustomer(customer.id),
         CashewFlowXPaymentEntry.getByCustomer(customer.id),
         CashewFlowXStockEntry.getTypeTotalsByCustomer(customer.id),
+        CashewFlowXWhatsAppMessage.getByCustomer(customer.id),
       ]);
 
       const stockEntries = stockRows.map(toStockEntryDto);
@@ -141,6 +144,7 @@ class CashewFlowXCustomerController {
           stockEntries,
           paymentEntries,
           activity: buildActivity(stockEntries, paymentEntries),
+          whatsappMessages,
         },
       });
     } catch (error) {
@@ -312,7 +316,9 @@ class CashewFlowXStockEntryController {
       const values = { customerId: Number(req.body.customerId), ...buildStockValues(req.body) };
       const id = await CashewFlowXStockEntry.create(values);
       const entry = await CashewFlowXStockEntry.getById(id);
-      res.status(201).json({ success: true, message: 'Stock entry saved', data: toStockEntryDto(entry) });
+      // The entry is already saved; a WhatsApp failure is reported, never thrown.
+      const whatsapp = await notifyStockGiven(entry);
+      res.status(201).json({ success: true, message: 'Stock entry saved', data: { ...toStockEntryDto(entry), whatsapp } });
     } catch (error) {
       next(error);
     }
@@ -368,7 +374,8 @@ class CashewFlowXPaymentEntryController {
         ...buildPaymentValues(req.body),
       });
       const entry = await CashewFlowXPaymentEntry.getById(id);
-      res.status(201).json({ success: true, message: 'Payment saved', data: toPaymentEntryDto(entry) });
+      const whatsapp = await notifyPaymentReceived(entry);
+      res.status(201).json({ success: true, message: 'Payment saved', data: { ...toPaymentEntryDto(entry), whatsapp } });
     } catch (error) {
       next(error);
     }

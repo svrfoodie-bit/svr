@@ -4,14 +4,17 @@ const { promisePool } = require('../config/database');
 class CashewFlowXCustomer {
   static async create(data) {
     const [result] = await promisePool.query(
-      `INSERT INTO cashew_flow_x_customers (customerName, mobileNumber, address, notes, status)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO cashew_flow_x_customers
+         (customerName, mobileNumber, address, notes, status, whatsappLanguage, whatsappEnabled)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         data.customerName.trim(),
         data.mobileNumber || null,
         data.address || null,
         data.notes || null,
         data.status || 'Active',
+        data.whatsappLanguage === 'te' ? 'te' : 'en',
+        data.whatsappEnabled === false || data.whatsappEnabled === 0 ? 0 : 1,
       ]
     );
     return result.insertId;
@@ -20,7 +23,8 @@ class CashewFlowXCustomer {
   // Lists customers with their stock/payment totals (balance is derived by the controller).
   static async getAll({ search, status } = {}) {
     let query = `
-      SELECT c.id, c.customerName, c.mobileNumber, c.address, c.notes, c.status, c.createdAt, c.updatedAt,
+      SELECT c.id, c.customerName, c.mobileNumber, c.address, c.notes, c.status,
+             c.whatsappLanguage, c.whatsappEnabled, c.createdAt, c.updatedAt,
              COALESCE(s.totalStockKg, 0) AS totalStockKg,
              COALESCE(s.totalStockAmount, 0) AS totalStockAmount,
              COALESCE(p.totalPaid, 0) AS totalPaid
@@ -59,7 +63,8 @@ class CashewFlowXCustomer {
   static async update(id, data) {
     const [result] = await promisePool.query(
       `UPDATE cashew_flow_x_customers
-       SET customerName = ?, mobileNumber = ?, address = ?, notes = ?, status = ?
+       SET customerName = ?, mobileNumber = ?, address = ?, notes = ?, status = ?,
+           whatsappLanguage = ?, whatsappEnabled = ?
        WHERE id = ?`,
       [
         data.customerName.trim(),
@@ -67,6 +72,8 @@ class CashewFlowXCustomer {
         data.address || null,
         data.notes || null,
         data.status || 'Active',
+        data.whatsappLanguage === 'te' ? 'te' : 'en',
+        data.whatsappEnabled === false || Number(data.whatsappEnabled) === 0 ? 0 : 1,
         id,
       ]
     );
@@ -89,6 +96,16 @@ class CashewFlowXCustomer {
       [id, id]
     );
     return { stockCount: Number(rows[0].stockCount), paymentCount: Number(rows[0].paymentCount) };
+  }
+
+  static async getTotals(id) {
+    const [rows] = await promisePool.query(
+      `SELECT
+         (SELECT COALESCE(SUM(totalAmount), 0) FROM cashew_flow_x_stock_entries WHERE customerId = ?) AS totalStockAmount,
+         (SELECT COALESCE(SUM(paymentAmount), 0) FROM cashew_flow_x_payment_entries WHERE customerId = ?) AS totalPaid`,
+      [id, id]
+    );
+    return rows[0];
   }
 
   static async delete(id) {

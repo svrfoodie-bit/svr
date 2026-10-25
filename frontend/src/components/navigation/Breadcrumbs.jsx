@@ -43,6 +43,7 @@ const SEGMENT_LABELS = {
   'stock-entry': 'Add Stock',
   'payment-entry': 'Add Payment',
   'cashew-types': 'Cashew Types',
+  'whatsapp-settings': 'WhatsApp Settings',
 };
 
 const toTitleCase = (value) =>

@@ -44,3 +44,16 @@ export const CASHEW_FLOW_X_BALANCE_BADGE = {
 export const notifyCashewFlowXError = (error, fallback) => {
   if (!error?.__toastHandled) toast.error(error?.message || fallback);
 };
+
+// Reports the WhatsApp outcome returned with a saved stock/payment entry.
+// "Turned off" skips (module, event or customer opt-out) stay quiet; config problems are shown.
+export const notifyCashewFlowXWhatsApp = (whatsapp) => {
+  if (!whatsapp) return;
+  if (whatsapp.status === 'Sent') {
+    toast.success('WhatsApp message sent to customer');
+  } else if (whatsapp.status === 'Failed') {
+    toast.error(`Saved, but WhatsApp failed: ${whatsapp.error}`, { duration: 8000 });
+  } else if (whatsapp.status === 'Skipped' && whatsapp.messageLogId && !/turned off/i.test(whatsapp.error || '')) {
+    toast(`WhatsApp not sent: ${whatsapp.error}`, { icon: 'ℹ️', duration: 6000 });
+  }
+};

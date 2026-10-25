@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Plus, Tags, Users, AlertTriangle, Wallet, PackagePlus, IndianRupee } from 'lucide-react';
+import { Plus, Tags, Users, AlertTriangle, Wallet, PackagePlus, IndianRupee, MessageCircle } from 'lucide-react';
 import useDebounce from '../../hooks/useDebounce';
 import { cashewFlowXCustomerService } from '../../services/cashewFlowXService';
 import CashewFlowXCustomerSearch from '../../components/cashewFlowX/CashewFlowXCustomerSearch';
@@ -93,6 +93,9 @@ const CashewFlowXDashboard = () => {
         <div className="flex flex-wrap gap-2">
           <button onClick={() => navigate('/cashew-flow-x/cashew-types')} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium">
             <Tags size={16} /> Cashew Types
+          </button>
+          <button onClick={() => navigate('/cashew-flow-x/whatsapp-settings')} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium">
+            <MessageCircle size={16} /> WhatsApp
           </button>
           <button onClick={() => navigate('/cashew-flow-x/stock-entry')} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 text-sm font-medium">
             <PackagePlus size={16} /> Add Stock

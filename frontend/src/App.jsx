@@ -114,6 +114,7 @@ import CashewFlowXCustomerView from './pages/cashewFlowX/CashewFlowXCustomerView
 import CashewFlowXCashewTypeManager from './pages/cashewFlowX/CashewFlowXCashewTypeManager';
 import CashewFlowXStockEntryPage from './pages/cashewFlowX/CashewFlowXStockEntryPage';
 import CashewFlowXPaymentEntryPage from './pages/cashewFlowX/CashewFlowXPaymentEntryPage';
+import CashewFlowXWhatsAppSettings from './pages/cashewFlowX/CashewFlowXWhatsAppSettings';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -265,6 +266,7 @@ function App() {
         <Route path="cashew-flow-x/stock-entry" element={<CashewFlowXStockEntryPage />} />
         <Route path="cashew-flow-x/payment-entry" element={<CashewFlowXPaymentEntryPage />} />
         <Route path="cashew-flow-x/cashew-types" element={<CashewFlowXCashewTypeManager />} />
+        <Route path="cashew-flow-x/whatsapp-settings" element={<CashewFlowXWhatsAppSettings />} />
 
       </Route>
 

@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { cashewFlowXPaymentEntryService } from '../../services/cashewFlowXService';
 import CashewFlowXCustomerSelect from './CashewFlowXCustomerSelect';
-import { cashewFlowXToday, formatCashewFlowXCurrency, notifyCashewFlowXError } from './cashewFlowXFormat';
+import {
+  cashewFlowXToday,
+  formatCashewFlowXCurrency,
+  notifyCashewFlowXError,
+  notifyCashewFlowXWhatsApp,
+} from './cashewFlowXFormat';
 
 const emptyPaymentForm = (customerId) => ({
   customerId: customerId ? String(customerId) : '',
@@ -78,6 +83,7 @@ const CashewFlowXPaymentEntryForm = ({ customerId, entry, outstandingBalance, on
         ? await cashewFlowXPaymentEntryService.update(entry.id, payload)
         : await cashewFlowXPaymentEntryService.create({ ...payload, customerId: Number(form.customerId) });
       toast.success(isEdit ? 'Payment updated' : 'Payment saved');
+      if (!isEdit) notifyCashewFlowXWhatsApp(saved?.whatsapp);
       onSaved?.(saved);
       if (!isEdit) setForm((f) => ({ ...emptyPaymentForm(customerId || f.customerId) }));
     } catch (error) {

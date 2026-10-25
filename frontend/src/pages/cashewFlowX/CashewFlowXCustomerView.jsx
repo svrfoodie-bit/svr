@@ -7,7 +7,9 @@ import {
   cashewFlowXCustomerService,
   cashewFlowXStockEntryService,
   cashewFlowXPaymentEntryService,
+  cashewFlowXWhatsAppService,
 } from '../../services/cashewFlowXService';
+import CashewFlowXWhatsAppHistory from '../../components/cashewFlowX/CashewFlowXWhatsAppHistory';
 import CashewFlowXCustomerSummary from '../../components/cashewFlowX/CashewFlowXCustomerSummary';
 import CashewFlowXStockEntryTable from '../../components/cashewFlowX/CashewFlowXStockEntryTable';
 import CashewFlowXPaymentEntryTable from '../../components/cashewFlowX/CashewFlowXPaymentEntryTable';
@@ -28,6 +30,7 @@ const TABS = [
   { key: 'stock', label: 'Stock History' },
   { key: 'payments', label: 'Payments' },
   { key: 'activity', label: 'Activity' },
+  { key: 'whatsapp', label: 'WhatsApp' },
 ];
 
 const CashewFlowXCustomerView = () => {
@@ -40,6 +43,7 @@ const CashewFlowXCustomerView = () => {
   // modal: null | { type: 'stock' | 'payment' | 'customer', entry? }
   const [modal, setModal] = useState(null);
   const [deletingKey, setDeletingKey] = useState(null);
+  const [resendingId, setResendingId] = useState(null);
 
   // Every mutation re-fetches details, so summary, type totals and activity are
   // always recalculated from the stored records rather than patched locally.
@@ -93,6 +97,20 @@ const CashewFlowXCustomerView = () => {
     }
   };
 
+  const resendWhatsApp = async (message) => {
+    setResendingId(message.id);
+    try {
+      const result = await cashewFlowXWhatsAppService.resend(message.id);
+      if (result?.status === 'Sent') toast.success('WhatsApp message sent');
+      else toast.error(`WhatsApp not sent: ${result?.error || 'unknown error'}`, { duration: 8000 });
+      await loadDetails({ silent: true });
+    } catch (error) {
+      notifyCashewFlowXError(error, 'Failed to resend WhatsApp message');
+    } finally {
+      setResendingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px] gap-2 text-gray-600">
@@ -114,7 +132,8 @@ const CashewFlowXCustomerView = () => {
     );
   }
 
-  const { customer, summary, typeTotals, stockEntries, paymentEntries, activity } = details;
+  const { customer, summary, typeTotals, stockEntries, paymentEntries, activity, whatsappMessages = [] } = details;
+  const failedWhatsAppCount = whatsappMessages.filter((m) => m.status === 'Failed').length;
   const stockDeletingId = deletingKey?.startsWith('stock-') ? Number(deletingKey.slice(6)) : null;
   const paymentDeletingId = deletingKey?.startsWith('payment-') ? Number(deletingKey.slice(8)) : null;
 
@@ -167,6 +186,9 @@ const CashewFlowXCustomerView = () => {
               {tab.label}
               {tab.key === 'stock' && ` (${stockEntries.length})`}
               {tab.key === 'payments' && ` (${paymentEntries.length})`}
+              {tab.key === 'whatsapp' && failedWhatsAppCount > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px]">{failedWhatsAppCount}</span>
+              )}
             </button>
           ))}
         </div>
@@ -199,6 +221,9 @@ const CashewFlowXCustomerView = () => {
             />
           )}
           {activeTab === 'activity' && <CashewFlowXActivityHistory activity={activity} />}
+          {activeTab === 'whatsapp' && (
+            <CashewFlowXWhatsAppHistory messages={whatsappMessages} onResend={resendWhatsApp} resendingId={resendingId} />
+          )}
         </div>
       </div>
 

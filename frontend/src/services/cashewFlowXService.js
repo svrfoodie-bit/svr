@@ -34,3 +34,11 @@ export const cashewFlowXPaymentEntryService = {
   update: (id, data) => put(`${BASE}/payment-entries/${id}`, data),
   delete: (id) => del(`${BASE}/payment-entries/${id}`),
 };
+
+export const cashewFlowXWhatsAppService = {
+  // Returns { settings, templates }. The access token itself is never returned.
+  getSettings: () => get(`${BASE}/whatsapp/settings`),
+  saveSettings: (data) => put(`${BASE}/whatsapp/settings`, data),
+  sendTest: (mobileNumber) => post(`${BASE}/whatsapp/test`, { mobileNumber }),
+  resend: (messageId) => post(`${BASE}/whatsapp/messages/${messageId}/resend`, {}),
+};

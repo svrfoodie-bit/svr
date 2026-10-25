@@ -14,6 +14,7 @@ const {
   CashewFlowXStockEntryController,
   CashewFlowXPaymentEntryController,
 } = require('../controllers/cashewFlowX.controller');
+const CashewFlowXWhatsAppController = require('../controllers/cashewFlowXWhatsApp.controller');
 const { CASHEW_FLOW_X_PAYMENT_MODES } = require('../utils/cashewFlowXBalance');
 
 const router = express.Router();
@@ -33,6 +34,8 @@ const customerValidators = [
   optionalText('address', 255, 'Address'),
   optionalText('notes', 2000, 'Notes'),
   body('status').optional().isIn(STATUSES).withMessage('Status must be Active or Inactive'),
+  body('whatsappLanguage').optional().isIn(['en', 'te']).withMessage('WhatsApp language must be English or Telugu'),
+  body('whatsappEnabled').optional().isBoolean().withMessage('Invalid WhatsApp updates setting'),
 ];
 
 router.get('/customers', CashewFlowXCustomerController.getAll);
@@ -93,5 +96,30 @@ router.get('/payment-modes', CashewFlowXPaymentEntryController.getPaymentModes);
 router.post('/payment-entries', [customerIdValidator, ...paymentEntryFieldValidators], validate, CashewFlowXPaymentEntryController.create);
 router.put('/payment-entries/:id', paymentEntryFieldValidators, validate, CashewFlowXPaymentEntryController.update);
 router.delete('/payment-entries/:id', CashewFlowXPaymentEntryController.delete);
+
+// ==================== WHATSAPP (Meta Cloud API) ====================
+const whatsappSettingsValidators = [
+  body('enabled').optional().isBoolean(),
+  body('sendOnStock').optional().isBoolean(),
+  body('sendOnPayment').optional().isBoolean(),
+  body('phoneNumberId').optional({ checkFalsy: true }).trim()
+    .matches(/^[0-9]{5,30}$/).withMessage('Phone Number ID must contain digits only'),
+  body('accessToken').optional({ checkFalsy: true }).isString().trim()
+    .isLength({ min: 20, max: 1000 }).withMessage('Access token looks too short'),
+  body('apiVersion').optional().trim().matches(/^v[0-9]{1,2}\.[0-9]$/).withMessage('API version must look like v21.0'),
+  body('countryCode').optional().trim().matches(/^[0-9]{1,4}$/).withMessage('Country code must be digits, e.g. 91'),
+  optionalText('businessName', 100, 'Business name'),
+  body(['stockTemplateName', 'paymentTemplateName']).optional().trim()
+    .matches(/^[a-z0-9_]{1,100}$/).withMessage('Template names use lowercase letters, numbers and _ only'),
+  body(['englishLanguageCode', 'teluguLanguageCode']).optional().trim()
+    .matches(/^[a-z]{2}(_[A-Z]{2})?$/).withMessage('Language code must look like en, en_US or te'),
+];
+
+router.get('/whatsapp/settings', CashewFlowXWhatsAppController.getSettings);
+router.put('/whatsapp/settings', whatsappSettingsValidators, validate, CashewFlowXWhatsAppController.saveSettings);
+router.post('/whatsapp/test', [
+  body('mobileNumber').trim().matches(/^[0-9]{10}$/).withMessage('Enter a 10-digit mobile number'),
+], validate, CashewFlowXWhatsAppController.sendTest);
+router.post('/whatsapp/messages/:id/resend', CashewFlowXWhatsAppController.resend);
 
 module.exports = router;

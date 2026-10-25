@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CashewFlowX WhatsApp Setup</title>
+<style>
+  :root {
+    --bg: #f6f7f4;
+    --surface: #ffffff;
+    --surface-2: #f1f4ee;
+    --text: #1f2a1c;
+    --muted: #5d6b58;
+    --border: #dfe5da;
+    --accent: #4f7a35;
+    --accent-soft: #e6efdf;
+    --warn-bg: #fff6e0;
+    --warn-border: #f0d48a;
+    --warn-text: #6b4e00;
+    --danger-bg: #fdecec;
+    --danger-border: #f2b8b8;
+    --danger-text: #8a1f1f;
+    --info-bg: #e9f2fd;
+    --info-border: #b9d3f3;
+    --info-text: #17436e;
+    --code-bg: #eef1ea;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121611;
+      --surface: #1a2018;
+      --surface-2: #20281d;
+      --text: #e5ecdf;
+      --muted: #a3b09c;
+      --border: #2f3a2b;
+      --accent: #8cc56a;
+      --accent-soft: #24331d;
+      --warn-bg: #2e2510;
+      --warn-border: #5e4a17;
+      --warn-text: #f2d48a;
+      --danger-bg: #331717;
+      --danger-border: #6b2a2a;
+      --danger-text: #f3b0b0;
+      --info-bg: #142335;
+      --info-border: #2b4b70;
+      --info-text: #a9cdf5;
+      --code-bg: #232c20;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121611; --surface: #1a2018; --surface-2: #20281d; --text: #e5ecdf; --muted: #a3b09c;
+    --border: #2f3a2b; --accent: #8cc56a; --accent-soft: #24331d; --warn-bg: #2e2510; --warn-border: #5e4a17;
+    --warn-text: #f2d48a; --danger-bg: #331717; --danger-border: #6b2a2a; --danger-text: #f3b0b0;
+    --info-bg: #142335; --info-border: #2b4b70; --info-text: #a9cdf5; --code-bg: #232c20;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Telugu", sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  header.top { margin-bottom: 20px; }
+  h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.2; margin: 0 0 6px; }
+  .subtitle { color: var(--muted); margin: 0; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
+  .pill { font-size: .8rem; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .btn {
+    font: inherit; font-size: .85rem; cursor: pointer; border-radius: 10px; padding: 6px 12px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .progress { margin: 18px 0 8px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .progress-bar { height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 8px; }
+  .progress-bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+
+  nav.toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin: 16px 0 24px; }
+  nav.toc ol { margin: 6px 0 0; padding-left: 22px; columns: 2; column-gap: 28px; }
+  nav.toc a { color: var(--accent); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  @media (max-width: 560px) { nav.toc ol { columns: 1; } }
+
+  section.part { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 18px 8px; margin: 18px 0; scroll-margin-top: 12px; }
+  section.part > h2 { font-size: 1.25rem; margin: 0 0 4px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .num { display: inline-grid; place-items: center; min-width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-size: .95rem; }
+  .when { font-size: .8rem; color: var(--muted); font-weight: 500; }
+  .lead { color: var(--muted); margin: 4px 0 10px; }
+
+  ol.steps { list-style: none; padding: 0; margin: 8px 0 12px; counter-reset: step; }
+  ol.steps > li { counter-increment: step; display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 9px 0; border-top: 1px dashed var(--border); }
+  ol.steps > li:first-child { border-top: 0; }
+  ol.steps input[type="checkbox"] { width: 20px; height: 20px; margin-top: 3px; accent-color: var(--accent); cursor: pointer; }
+  ol.steps li.done .step-body { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--border); }
+  .step-body::before { content: counter(step) ". "; font-weight: 700; color: var(--accent); }
+  .step-body ul { margin: 6px 0 0; padding-left: 20px; }
+
+  .callout { border-radius: 12px; padding: 10px 14px; margin: 10px 0 14px; border: 1px solid; font-size: .95rem; }
+  .callout.warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-text); }
+  .callout.danger { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger-text); }
+  .callout.info { background: var(--info-bg); border-color: var(--info-border); color: var(--info-text); }
+  .callout strong { color: inherit; }
+
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .9em; background: var(--code-bg); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+  .copy-inline { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+  .tpl { border: 1px solid var(--border); border-radius: 12px; margin: 12px 0; overflow: hidden; }
+  .tpl-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; padding: 10px 12px; background: var(--surface-2); }
+  .tpl-head h3 { margin: 0; font-size: 1rem; }
+  .tpl-body { padding: 10px 12px; }
+  .tpl-text { background: var(--code-bg); border-radius: 10px; padding: 10px 12px; margin: 6px 0 10px; overflow-wrap: anywhere; }
+  .tpl-label { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .85rem; font-weight: 600; color: var(--muted); }
+
+  .table-scroll { overflow-x: auto; margin: 8px 0 14px; border: 1px solid var(--border); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface-2); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+
+  details.faq { border-top: 1px dashed var(--border); padding: 10px 0; }
+  details.faq:first-of-type { border-top: 0; }
+  details.faq summary { cursor: pointer; font-weight: 600; }
+  details.faq p { margin: 8px 0 0; color: var(--muted); }
+
+  footer { color: var(--muted); font-size: .85rem; margin-top: 28px; }
+  footer a { color: var(--accent); }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 10px; font-size: .9rem; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .toast.show { opacity: 1; }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .btn, .progress, nav.toc, .toast { display: none !important; }
+    section.part { break-inside: avoid; border-color: #ccc; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>CashewFlowX WhatsApp Setup Guide</h1>
+    <p class="subtitle">From zero to automatic customer messages using the Meta WhatsApp Cloud API. Written for SVR Food Production; no technical background needed.</p>
+    <div class="meta-row">
+      <span class="pill">Last updated: 05-10-2026</span>
+      <span class="pill">Parts 1–7: start today</span>
+      <span class="pill">Part 8: needs the new SIM</span>
+      <button class="btn" type="button" id="themeBtn">Toggle dark mode</button>
+      <button class="btn" type="button" onclick="window.print()">Print</button>
+    </div>
+  </header>
+
+  <div class="progress" aria-live="polite">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <strong id="progressText">0 of 0 steps done</strong>
+      <button class="btn" type="button" id="resetBtn">Reset ticks</button>
+    </div>
+    <div class="progress-bar"><span id="progressFill"></span></div>
+    <small style="color:var(--muted)">Ticks are saved in this browser only, so you can stop and continue later.</small>
+  </div>
+
+  <nav class="toc" aria-label="Contents">
+    <strong>Contents</strong>
+    <ol>
+      <li><a href="#p1">What you need</a></li>
+      <li><a href="#p2">Create the Meta Business account</a></li>
+      <li><a href="#p3">Business verification</a></li>
+      <li><a href="#p4">Create the developer app</a></li>
+      <li><a href="#p5">First test message</a></li>
+      <li><a href="#p6">Create the message templates</a></li>
+      <li><a href="#p7">Permanent access token</a></li>
+      <li><a href="#p8">Add the new business number</a></li>
+      <li><a href="#p9">Go live</a></li>
+      <li><a href="#trouble">Troubleshooting</a></li>
+      <li><a href="#faq">Questions</a></li>
+    </ol>
+  </nav>
+
+  <div class="callout info">
+    <strong>How it works in one line:</strong> CashewFlowX sends a WhatsApp message to the customer whenever stock is given or a payment is received, through Meta's official WhatsApp Cloud API. Meta only allows pre-approved message wording ("templates"), and charges per message.
+  </div>
+
+  <!-- PART 1 -->
+  <section class="part" id="p1">
+    <h2><span class="num">1</span> What you need before starting <span class="when">· 5 min</span></h2>
+    <ol class="steps">
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>Your personal Facebook account.</strong> Meta business accounts are created under a real person's login. Customers never see your personal profile.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>One business document</strong> for verification, any one of:
+        <ul><li>GST certificate</li><li>Udyam / MSME registration</li><li>Shop &amp; Establishment licence</li><li>PAN / incorporation certificate (for a company)</li></ul></div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>A business email address.</strong> Gmail works; an email on your own domain makes verification easier.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>A debit/credit card.</strong> Needed only when going live (Part 9).</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>A computer.</strong> Meta's setup screens are much easier on a laptop than on a phone.</div></li>
+    </ol>
+  </section>
+
+  <!-- PART 2 -->
+  <section class="part" id="p2">
+    <h2><span class="num">2</span> Create the Meta Business account <span class="when">· 10 min</span></h2>
+    <p class="lead">Meta calls this a <strong>"business portfolio"</strong>.</p>
+    <ol class="steps">
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Open <span class="mono">business.facebook.com</span> and log in with your Facebook account.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Click <strong>Create an account</strong>. If an account already exists, it is listed; just open it.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Enter the <strong>business name exactly as on your GST/Udyam document</strong> (e.g. <em>SVR Food Production</em>), your name and business email.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Open the confirmation email from Meta and click the link.</div></li>
+    </ol>
+  </section>
+
+  <!-- PART 3 -->
+  <section class="part" id="p3">
+    <h2><span class="num">3</span> Start business verification <span class="when">· 15 min + waiting</span></h2>
+    <p class="lead">Start this early. It can be approved in minutes or take a few days. You can continue with Part 4 while it is under review.</p>
+    <ol class="steps">
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">In <span class="mono">business.facebook.com</span> open <strong>Settings</strong> (gear icon) → <strong>Business info</strong> (sometimes under <strong>Security Centre</strong>) → <strong>Start verification</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Enter the legal business name, address, phone and website (if any). <strong>Everything must match your document exactly</strong>, including spelling and address format.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Upload your GST or Udyam certificate.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Confirm with the code Meta sends (email or phone).</div></li>
+    </ol>
+    <div class="callout info">Until verification is approved, Meta limits how many customers you can message per day. Testing works fine in the meantime.</div>
+  </section>
+
+  <!-- PART 4 -->
+  <section class="part" id="p4">
+    <h2><span class="num">4</span> Become a developer and create the app <span class="when">· 10 min</span></h2>
+    <ol class="steps">
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Open <span class="mono">developers.facebook.com</span> → <strong>Get Started</strong>. Accept the terms and verify your mobile with the code. (This only proves you are a real person; it is <em>not</em> the business number.)</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Go to <strong>My Apps</strong> → <strong>Create App</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>App name:</strong> <em>CashewFlowX</em>. Contact email: yours.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>Use case:</strong> choose <strong>"Connect with customers through WhatsApp"</strong> → <strong>Next</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>Business portfolio:</strong> select the one from Part 2.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Click <strong>Create app</strong>. Meta automatically creates a <strong>WhatsApp Business Account</strong> and gives you a <strong>free test phone number</strong>.</div></li>
+    </ol>
+  </section>
+
+  <!-- PART 5 -->
+  <section class="part" id="p5">
+    <h2><span class="num">5</span> Send your first test message <span class="when">· 5 min</span></h2>
+    <ol class="steps">
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">In your app's left menu: <strong>WhatsApp</strong> → <strong>API Setup</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Under <strong>"From"</strong> (Meta's test number), copy the <strong>Phone number ID</strong>. It is a long number such as <span class="mono">106540352242922</span>, not the phone number itself.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Click <strong>Generate</strong> next to <strong>Temporary access token</strong> and copy it. It stops working after <strong>24 hours</strong>, which is fine for testing.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Under <strong>"To"</strong> → <strong>Manage phone number list</strong>, add <strong>your own mobile</strong> and enter the code WhatsApp sends you. The test number can only message up to 5 numbers verified this way.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Open <strong>CashewFlowX</strong> (nut icon in the header) → <strong>WhatsApp</strong>:
+        <ul><li>Paste the <strong>Phone Number ID</strong></li><li>Paste the <strong>Access Token</strong></li><li>Click <strong>Save Settings</strong></li></ul></div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">In <strong>Send a test message</strong>, enter your mobile → <strong>Send Test</strong>. You should receive Meta's "Hello World" message on WhatsApp. If it arrives, the connection works.</div></li>
+    </ol>
+  </section>
+
+  <!-- PART 6 -->
+  <section class="part" id="p6">
+    <h2><span class="num">6</span> Create the message templates <span class="when">· 30 min + approval</span></h2>
+    <p class="lead">Two templates, each in English and Telugu: four approvals in total. The <strong>names</strong> and <strong>texts</strong> must be exactly as below, because CashewFlowX fills in the {{1}}, {{2}}… values in this order.</p>
+    <div class="callout warn"><strong>Before submitting:</strong> have a Telugu speaker read the Telugu texts. They were written by the developer and may need wording fixes. If you change the wording, keep every {{n}} with the same number and meaning.</div>
+    <ol class="steps">
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Open <span class="mono">business.facebook.com</span> → <strong>WhatsApp Manager</strong> → <strong>Message templates</strong> → <strong>Create template</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>Category:</strong> <strong>Utility</strong> (not Marketing). <strong>Name:</strong> copy from the card below. <strong>Language:</strong> plain <strong>English</strong> (not "English (US)"; CashewFlowX uses the code <span class="mono">en</span>). If asked for the <strong>type of variable</strong>, choose <strong>Number</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Paste the <strong>English body</strong>, fill in the <strong>sample values</strong> from the table, and <strong>Submit</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">On the same template choose <strong>Add language</strong> → <strong>Telugu</strong> → paste the <strong>Telugu body</strong> → same samples (use the Telugu balance sample) → <strong>Submit</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Repeat steps 1–4 for the second template.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Wait for status <strong>Active</strong> (usually minutes to a day). If one is rejected, see <a href="#trouble">Troubleshooting</a>.</div></li>
+    </ol>
+
+    <div class="tpl">
+      <div class="tpl-head">
+        <h3>Template 1: Stock given</h3>
+        <span class="copy-inline">Name: <code>cfx_stock_given</code> <button class="btn" type="button" data-copy="cfx_stock_given">Copy name</button></span>
+      </div>
+      <div class="tpl-body">
+        <div class="tpl-label">English body <button class="btn" type="button" data-copy-target="t-stock-en">Copy</button></div>
+        <div class="tpl-text" id="t-stock-en">Hello {{1}}, this is {{2}}. Stock given on {{3}}: {{4}}, {{5}} KG x ₹{{6}} = ₹{{7}}. Your current balance: {{8}}. Thank you.</div>
+        <div class="tpl-label">Telugu body <button class="btn" type="button" data-copy-target="t-stock-te">Copy</button></div>
+        <div class="tpl-text" id="t-stock-te" lang="te">నమస్కారం {{1}}, ఇది {{2}} నుండి. {{3}} న మీకు ఇచ్చిన సరుకు: {{4}}, {{5}} KG x ₹{{6}} = ₹{{7}}. మీ ప్రస్తుత బ్యాలెన్స్: {{8}}. ధన్యవాదాలు.</div>
+      </div>
+    </div>
+
+    <div class="tpl">
+      <div class="tpl-head">
+        <h3>Template 2: Payment received</h3>
+        <span class="copy-inline">Name: <code>cfx_payment_received</code> <button class="btn" type="button" data-copy="cfx_payment_received">Copy name</button></span>
+      </div>
+      <div class="tpl-body">
+        <div class="tpl-label">English body <button class="btn" type="button" data-copy-target="t-pay-en">Copy</button></div>
+        <div class="tpl-text" id="t-pay-en">Hello {{1}}, this is {{2}}. We have received your payment of ₹{{3}} by {{4}} on {{5}}. Your current balance: {{6}}. Thank you.</div>
+        <div class="tpl-label">Telugu body <button class="btn" type="button" data-copy-target="t-pay-te">Copy</button></div>
+        <div class="tpl-text" id="t-pay-te" lang="te">నమస్కారం {{1}}, ఇది {{2}} నుండి. మీ ₹{{3}} చెల్లింపు {{4}} ద్వారా {{5}} న అందింది. మీ ప్రస్తుత బ్యాలెన్స్: {{6}}. ధన్యవాదాలు.</div>
+      </div>
+    </div>
+
+    <h3 style="font-size:1rem;margin:14px 0 4px">Sample values Meta asks for</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Variable</th><th>Stock template</th><th>Payment template</th></tr></thead>
+        <tbody>
+          <tr><td><code>{{1}}</code></td><td>Ramesh Traders</td><td>Ramesh Traders</td></tr>
+          <tr><td><code>{{2}}</code></td><td>SVR Food Production</td><td>SVR Food Production</td></tr>
+          <tr><td><code>{{3}}</code></td><td>04-10-2026</td><td>30,000</td></tr>
+          <tr><td><code>{{4}}</code></td><td>JH</td><td>UPI</td></tr>
+          <tr><td><code>{{5}}</code></td><td>100</td><td>05-10-2026</td></tr>
+          <tr><td><code>{{6}}</code></td><td>800</td><td>English: ₹50,000 outstanding<br>Telugu: <span lang="te">₹50,000 బాకీ ఉంది</span></td></tr>
+          <tr><td><code>{{7}}</code></td><td>80,000</td><td>—</td></tr>
+          <tr><td><code>{{8}}</code></td><td>English: ₹67,500 outstanding<br>Telugu: <span lang="te">₹67,500 బాకీ ఉంది</span></td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PART 7 -->
+  <section class="part" id="p7">
+    <h2><span class="num">7</span> Create the permanent access token <span class="when">· 10 min</span></h2>
+    <p class="lead">The 24-hour token from Part 5 is for testing only. CashewFlowX needs one that never expires.</p>
+    <ol class="steps">
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><span class="mono">business.facebook.com</span> → <strong>Settings</strong> → <strong>Users</strong> → <strong>System users</strong> → <strong>Add</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Name: <em>cashewflowx-server</em>, role <strong>Admin</strong> → <strong>Create</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Select it → <strong>Assign assets</strong> → <strong>Apps</strong> → your CashewFlowX app → <strong>Full control</strong> → <strong>Save</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>Assign assets</strong> again → <strong>WhatsApp accounts</strong> → your WhatsApp account → <strong>Full control</strong> → <strong>Save</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Click <strong>Generate token</strong> → choose your app → <strong>Expiration: Never</strong> → tick both permissions:
+        <ul><li><code>whatsapp_business_messaging</code></li><li><code>whatsapp_business_management</code></li></ul></div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>Generate</strong> → copy the token <strong>immediately</strong>. Meta never shows it again.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Paste it into CashewFlowX → WhatsApp → <strong>Access Token</strong> → <strong>Save Settings</strong>. The screen will then only show its last 4 characters.</div></li>
+    </ol>
+    <div class="callout danger"><strong>Treat this token like a password.</strong> Don't send it over WhatsApp or email, and don't share screenshots of it. If it leaks, delete it under System users and generate a new one, then save the new one in CashewFlowX.</div>
+  </section>
+
+  <!-- PART 8 -->
+  <section class="part" id="p8">
+    <h2><span class="num">8</span> Add the new business number <span class="when">· when the SIM arrives · 10 min</span></h2>
+    <div class="callout warn"><strong>Don't install WhatsApp on the new SIM.</strong> A brand-new number goes straight onto the API. A number already on the WhatsApp Business app can be connected with Meta's "coexistence" option instead, but a number on normal personal WhatsApp cannot be used.</div>
+    <ol class="steps">
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Put the SIM in any phone that can receive SMS or calls.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>WhatsApp Manager</strong> → <strong>Phone numbers</strong> → <strong>Add phone number</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>Display name:</strong> your business name, e.g. <em>SVR Food Production</em>. Meta reviews it, and it must match your business.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Enter the number → verify with the SMS or voice code.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Copy the <strong>new Phone number ID</strong> → paste it into CashewFlowX in place of the test one → <strong>Save Settings</strong>.</div></li>
+    </ol>
+  </section>
+
+  <!-- PART 9 -->
+  <section class="part" id="p9">
+    <h2><span class="num">9</span> Go live <span class="when">· 10 min</span></h2>
+    <ol class="steps">
+      <li><input type="checkbox" aria-label="Done"><div class="step-body"><strong>WhatsApp Manager</strong> → <strong>Payment settings</strong> → add your card. Meta won't send real business messages without it.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">CashewFlowX → WhatsApp → <strong>Send Test</strong> to your mobile. It should arrive from the new number.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Check <strong>Business name in messages</strong> is filled in, then turn <strong>WhatsApp messages ON</strong> → <strong>Save Settings</strong>.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">Add yourself as a test customer (tick <strong>Send WhatsApp updates</strong>, choose a language), add a small stock entry, and check the message arrives. Then try Telugu. Delete the test entries afterwards.</div></li>
+      <li><input type="checkbox" aria-label="Done"><div class="step-body">For each real customer: open <strong>Edit</strong>, confirm the mobile number, set the language, and tick <strong>Send WhatsApp updates</strong> only if they agreed to receive messages.</div></li>
+    </ol>
+    <div class="callout info">After every stock or payment save, CashewFlowX shows "WhatsApp message sent" or the exact reason it failed. Each customer's <strong>WhatsApp</strong> tab lists all messages, with <strong>Resend</strong> for failed ones.</div>
+  </section>
+
+  <!-- TROUBLESHOOTING -->
+  <section class="part" id="trouble">
+    <h2>Troubleshooting</h2>
+    <p class="lead">CashewFlowX shows Meta's error message, usually with a code like <span class="mono">[code 132001]</span>. Common ones:</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>What you see</th><th>What it means</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>Invalid OAuth access token <span class="mono">[code 190]</span></td><td>Token expired or wrong. The temporary token lasts only 24 hours.</td><td>Create the permanent token (Part 7) and save it again.</td></tr>
+          <tr><td>Recipient phone number not in allowed list <span class="mono">[code 131030]</span></td><td>You are still on Meta's test number, which only messages verified numbers.</td><td>Add the customer's number under API Setup → "To", or finish Part 8.</td></tr>
+          <tr><td>Template name does not exist in the translation <span class="mono">[code 132001]</span></td><td>Template name or language does not match an approved template.</td><td>Check spelling in CashewFlowX settings, that the template is <strong>Active</strong> in that language, and the language codes (<code>en</code> / <code>te</code>).</td></tr>
+          <tr><td>Number of parameters does not match <span class="mono">[code 132000]</span></td><td>The approved template has a different number of {{n}} than expected.</td><td>Re-create the template using the exact text in Part 6.</td></tr>
+          <tr><td>Message undeliverable <span class="mono">[code 131026]</span></td><td>The customer's number is not on WhatsApp, or is wrong.</td><td>Check the customer's mobile number.</td></tr>
+          <tr><td>Business eligibility / payment issue <span class="mono">[code 131042]</span></td><td>No valid payment method on the WhatsApp account.</td><td>Add a card under Payment settings (Part 9).</td></tr>
+          <tr><td>Phone number not registered <span class="mono">[code 133010]</span></td><td>The business number was added but not fully registered.</td><td>Finish verification of the number in WhatsApp Manager.</td></tr>
+          <tr><td>WhatsApp Phone Number ID or Access Token is not set</td><td>CashewFlowX settings are incomplete.</td><td>Fill both fields and save.</td></tr>
+          <tr><td>Customer has no valid mobile number</td><td>The customer's mobile is empty or not 10 digits.</td><td>Edit the customer and fix the number, then <strong>Resend</strong>.</td></tr>
+          <tr><td>WhatsApp API did not respond in time</td><td>Temporary network problem.</td><td>Use <strong>Resend</strong> on the customer's WhatsApp tab.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout info"><strong>Template rejected?</strong> Usual reasons: chose "Marketing" instead of "Utility"; text starts or ends with a variable; missing sample values; or promotional words. Fix and resubmit. The texts above already follow Meta's rules.</div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="part" id="faq">
+    <h2>Questions</h2>
+    <details class="faq"><summary>How much does it cost?</summary><p>Meta charges per message in the "Utility" category. Rates change and differ by country, so check the current India rate in WhatsApp Manager → Payment settings / pricing. CashewFlowX itself has no extra charge.</p></details>
+    <details class="faq"><summary>Can I edit the message wording?</summary><p>Only in Meta (WhatsApp Manager → Message templates), and every change is reviewed again. Keep the same {{n}} numbers and meaning, or CashewFlowX will fill in the wrong values.</p></details>
+    <details class="faq"><summary>Why does an edited or deleted entry not send a message?</summary><p>By design: edits and deletes are usually your own corrections, and messages about them would confuse customers. Only new stock and new payments send messages.</p></details>
+    <details class="faq"><summary>Can I keep chatting with customers from my phone?</summary><p>A number used only by the API has no WhatsApp app. If you want to chat from the app on the same number, connect an existing WhatsApp Business app number using Meta's "coexistence" option instead of a fresh SIM.</p></details>
+    <details class="faq"><summary>Do I see "delivered" and "read" ticks in CashewFlowX?</summary><p>Not yet. "Sent" means Meta accepted the message. Delivery/read status needs Meta to call back into the server (a webhook), which can be added later.</p></details>
+    <details class="faq"><summary>Where is the access token stored?</summary><p>On the server, in the CashewFlowX WhatsApp settings table. It is never sent back to the browser; the screen shows only its last 4 characters.</p></details>
+    <details class="faq"><summary>Meta's screens look different from this guide.</summary><p>Meta renames menus from time to time. Look for the same words (System users, Message templates, API Setup, Phone numbers) using the search in business.facebook.com or developers.facebook.com.</p></details>
+  </section>
+
+  <footer>
+    <p>CashewFlowX WhatsApp settings: CashewFlowX (nut icon in the header) → <strong>WhatsApp</strong>.</p>
+    <p>Meta references:
+      <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started/" target="_blank" rel="noopener">WhatsApp Cloud API – Get started</a> ·
+      <a href="https://business.facebook.com/" target="_blank" rel="noopener">Meta Business Suite</a> ·
+      <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener">Meta App Dashboard</a>
+    </p>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+  (function () {
+    var KEY = 'cfx-whatsapp-guide-steps-v1';
+    var THEME_KEY = 'cfx-whatsapp-guide-theme';
+    var store = {
+      get: function (k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } },
+      set: function (k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } },
+      del: function (k) { try { window.localStorage.removeItem(k); } catch (e) { /* storage unavailable */ } }
+    };
+
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('ol.steps input[type="checkbox"]'));
+    var saved = {};
+    try { saved = JSON.parse(store.get(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+
+    function refresh() {
+      var done = 0;
+      boxes.forEach(function (b) {
+        b.closest('li').classList.toggle('done', b.checked);
+        if (b.checked) done++;
+      });
+      document.getElementById('progressText').textContent = done + ' of ' + boxes.length + ' steps done';
+      document.getElementById('progressFill').style.width = (boxes.length ? (done / boxes.length) * 100 : 0) + '%';
+    }
+
+    boxes.forEach(function (b, i) {
+      var id = (b.closest('section') || {}).id + '-' + i;
+      b.checked = Boolean(saved[id]);
+      b.addEventListener('change', function () {
+        saved[id] = b.checked;
+        store.set(KEY, JSON.stringify(saved));
+        refresh();
+      });
+    });
+    refresh();
+
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      if (!window.confirm('Clear all ticks?')) return;
+      saved = {};
+      store.del(KEY);
+      boxes.forEach(function (b) { b.checked = false; });
+      refresh();
+    });
+
+    var toastEl = document.getElementById('toast');
+    var toastTimer;
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 1600);
+    }
+
+    function copy(text) {
+      var done = function () { toast('Copied'); };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done, function () { fallback(text) ? done() : toast('Select the text and copy it manually'); });
+      } else {
+        fallback(text) ? done() : toast('Select the text and copy it manually');
+      }
+    }
+    // Works when the file is opened directly from disk (file://), where the Clipboard API may be blocked.
+    function fallback(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    }
+
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-copy], [data-copy-target]');
+      if (!btn) return;
+      if (btn.hasAttribute('data-copy')) copy(btn.getAttribute('data-copy'));
+      else copy(document.getElementById(btn.getAttribute('data-copy-target')).textContent.trim());
+    });
+
+    var root = document.documentElement;
+    var savedTheme = store.get(THEME_KEY);
+    if (savedTheme === 'dark' || savedTheme === 'light') root.setAttribute('data-theme', savedTheme);
+    document.getElementById('themeBtn').addEventListener('click', function () {
+      var isDark = root.getAttribute('data-theme') === 'dark' ||
+        (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      var next = isDark ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      store.set(THEME_KEY, next);
+    });
+  })();
+</script>
+</body>
+</html>

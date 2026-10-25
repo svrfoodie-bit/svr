@@ -4,7 +4,10 @@ import Modal from '../ui/Modal';
 import { cashewFlowXCustomerService } from '../../services/cashewFlowXService';
 import { notifyCashewFlowXError } from './cashewFlowXFormat';
 
-const EMPTY_FORM = { customerName: '', mobileNumber: '', address: '', notes: '', status: 'Active' };
+const EMPTY_FORM = {
+  customerName: '', mobileNumber: '', address: '', notes: '', status: 'Active',
+  whatsappLanguage: 'en', whatsappEnabled: true,
+};
 
 const validateCustomer = (form) => {
   const errors = {};
@@ -31,6 +34,9 @@ const CashewFlowXCustomerForm = ({ isOpen, customer, onClose, onSaved }) => {
       address: customer.address || '',
       notes: customer.notes || '',
       status: customer.status || 'Active',
+      whatsappLanguage: customer.whatsappLanguage === 'te' ? 'te' : 'en',
+      // Older rows / missing value default to opted in, matching the DB default.
+      whatsappEnabled: customer.whatsappEnabled === undefined ? true : Boolean(Number(customer.whatsappEnabled)),
     } : EMPTY_FORM);
   }, [isOpen, customer]);
 
@@ -92,6 +98,32 @@ const CashewFlowXCustomerForm = ({ isOpen, customer, onClose, onSaved }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
           <textarea className="input-field" rows={2} value={form.notes} onChange={(e) => setField('notes', e.target.value)} />
+        </div>
+        <div className="rounded-xl border border-gray-200 p-3 space-y-3">
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-1 w-4 h-4 accent-green-600"
+              checked={form.whatsappEnabled}
+              onChange={(e) => setField('whatsappEnabled', e.target.checked)}
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-800">Send WhatsApp updates</span>
+              <span className="block text-xs text-gray-500">Only if the customer agreed to receive stock and payment messages on WhatsApp.</span>
+            </span>
+          </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Language</label>
+            <select
+              className="input-field"
+              value={form.whatsappLanguage}
+              onChange={(e) => setField('whatsappLanguage', e.target.value)}
+              disabled={!form.whatsappEnabled}
+            >
+              <option value="en">English</option>
+              <option value="te">Telugu (తెలుగు)</option>
+            </select>
+          </div>
         </div>
         {isEdit && (
           <div>

@@ -8,6 +8,7 @@ import {
   cashewFlowXToday,
   formatCashewFlowXCurrency,
   notifyCashewFlowXError,
+  notifyCashewFlowXWhatsApp,
 } from './cashewFlowXFormat';
 
 const emptyStockForm = (customerId) => ({
@@ -82,6 +83,7 @@ const CashewFlowXStockEntryForm = ({ customerId, entry, onSaved, onCancel }) => 
         ? await cashewFlowXStockEntryService.update(entry.id, payload)
         : await cashewFlowXStockEntryService.create({ ...payload, customerId: Number(form.customerId) });
       toast.success(isEdit ? 'Stock entry updated' : 'Stock entry saved');
+      if (!isEdit) notifyCashewFlowXWhatsApp(saved?.whatsapp);
       onSaved?.(saved);
       if (!isEdit) setForm((f) => ({ ...emptyStockForm(customerId || f.customerId) }));
     } catch (error) {
