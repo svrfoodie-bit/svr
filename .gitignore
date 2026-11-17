@@ -46,4 +46,4 @@ tmp/
 # Claude Code / ml-specs (per-machine)
 .claude/settings.local.json
 .claude/handoff/
-.ml-specs/
+.ml-specs/activity.jsonl
