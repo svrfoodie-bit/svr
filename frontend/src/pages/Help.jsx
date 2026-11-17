@@ -432,7 +432,7 @@ const sections = [
     group: 'System',
     path: '/lead-manager',
     steps: [
-      { label: 'Lead Manager', desc: 'Go to System → Leads. Track potential new customers. Add leads with contact info and follow-up notes. Convert them to customers when they place an order.' },
+      { label: 'Lead Manager', desc: 'Go to System → Leads. Track potential new customers. Add leads with contact info and follow-up notes. When a lead places an order, click the Convert to Customer button (person + icon) in the Contacts tab to create the customer and mark the lead Converted.' },
     ],
   },
   {

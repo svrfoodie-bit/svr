@@ -1,15 +1,21 @@
 const { promisePool } = require('../config/database');
-const { addColumnIfMissing } = require('../utils/schemaHelpers');
 
-// Ensure address & category columns exist (run once)
-const ensureColumns = async () => {
-  try {
-    await addColumnIfMissing(promisePool, 'leads', 'address', 'VARCHAR(255) DEFAULT NULL');
-    await addColumnIfMissing(promisePool, 'leads', 'category', 'VARCHAR(100) DEFAULT NULL');
-    await addColumnIfMissing(promisePool, 'leads', 'normalizedPhone', 'VARCHAR(20) DEFAULT NULL');
-  } catch {}
+// Must match the leads.status ENUM (migration 014) and LEAD_STATUSES in the frontend.
+const LEAD_STATUSES = ['New', 'Contacted', 'Interested', 'Not Interested', 'Converted'];
+
+// Same rules as normalisePhone() in frontend/src/services/leadService.js.
+const normalisePhone = (raw = '') => {
+  let d = String(raw).replace(/\D/g, '');
+  if (d.startsWith('0')) d = '91' + d.slice(1);
+  if (d.length === 10) d = '91' + d;
+  return d;
 };
-ensureColumns();
+
+// Last 10 digits, the format the customers module requires.
+const tenDigitPhone = (raw = '') => {
+  const d = String(raw).replace(/\D/g, '');
+  return d.length >= 10 ? d.slice(-10) : d;
+};
 
 class Lead {
   static async create(data) {
@@ -89,9 +95,15 @@ class Lead {
   }
 
   static async update(id, data) {
+    // customerId / convertedAt are set only through convertToCustomer().
     const allowed = ['name', 'phone', 'normalizedPhone', 'status', 'source', 'campaignId', 'waSent', 'notes', 'location', 'address', 'category'];
     const updates = [];
     const params = [];
+
+    // Keep the dedup key in step when the phone is edited.
+    if (data.phone !== undefined && data.normalizedPhone === undefined && data._phone === undefined) {
+      data = { ...data, normalizedPhone: normalisePhone(data.phone) || null };
+    }
 
     Object.entries(data).forEach(([key, value]) => {
       // also accept _phone as normalizedPhone
@@ -138,6 +150,69 @@ class Lead {
     return result.affectedRows;
   }
 
+  /**
+   * Turns a lead into a customer. If an active customer already has the same
+   * 10-digit number, the lead is linked to that customer instead of creating a
+   * duplicate. Returns { lead, customer, created }.
+   * Throws an Error with .status set for client errors.
+   */
+  static async convertToCustomer(leadId, { name, type, area, contactNumber, address, createdBy }) {
+    const fail = (status, message) => Object.assign(new Error(message), { status });
+
+    const connection = await promisePool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [[lead]] = await connection.query('SELECT * FROM leads WHERE id = ? FOR UPDATE', [leadId]);
+      if (!lead) throw fail(404, 'Lead not found');
+      if (lead.customerId) throw fail(409, 'This lead is already linked to a customer');
+
+      const phone = tenDigitPhone(contactNumber || lead.normalizedPhone || lead.phone);
+      if (!/^[0-9]{10}$/.test(phone)) throw fail(400, 'Contact number must be exactly 10 digits');
+      if (!['Retail', 'Wholesale'].includes(type)) throw fail(400, 'Customer type must be Retail or Wholesale');
+      const customerName = String(name || lead.name || '').trim();
+      if (!customerName) throw fail(400, 'Customer name is required');
+      const customerArea = String(area || lead.location || '').trim();
+      if (!customerArea) throw fail(400, 'Area is required');
+
+      const [[existing]] = await connection.query(
+        'SELECT * FROM customers WHERE contactNumber = ? AND COALESCE(isDeleted, 0) = 0 LIMIT 1',
+        [phone]
+      );
+
+      let customerId;
+      let created = false;
+      if (existing) {
+        customerId = existing.id;
+      } else {
+        const [[{ count }]] = await connection.query('SELECT COUNT(*) AS count FROM customers');
+        const code = `CUST-${String(count + 1).padStart(4, '0')}`;
+        const [result] = await connection.query(
+          `INSERT INTO customers (customerId, name, type, contactNumber, area, address, isActive, createdBy)
+           VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
+          [code, customerName.slice(0, 100), type, phone, customerArea, address ?? lead.address ?? null, createdBy || 1]
+        );
+        customerId = result.insertId;
+        created = true;
+      }
+
+      await connection.query(
+        `UPDATE leads SET customerId = ?, convertedAt = NOW(), status = 'Converted', updatedAt = NOW() WHERE id = ?`,
+        [customerId, leadId]
+      );
+
+      await connection.commit();
+
+      const [[customer]] = await promisePool.query('SELECT * FROM customers WHERE id = ?', [customerId]);
+      return { lead: await Lead.getById(leadId), customer, created };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
   // Bulk create with server-side dedup by phone
   static async bulkCreate(leads) {
     if (!leads || leads.length === 0) return { imported: 0, skipped: 0 };
@@ -147,8 +222,8 @@ class Lead {
     let skipped = 0;
 
     for (const lead of leads) {
-      const normalized = lead.normalizedPhone || lead._phone || '';
       const raw = String(lead.phone || '').trim();
+      const normalized = lead.normalizedPhone || lead._phone || normalisePhone(raw);
       const key = normalized.length >= 10 ? normalized : raw;
 
       if (key && existingPhones.has(key)) {
@@ -167,7 +242,7 @@ class Lead {
             lead.name || 'Unknown',
             raw || null,
             normalized || null,
-            lead.status || 'New',
+            LEAD_STATUSES.includes(lead.status) ? lead.status : 'New',
             lead.source || null,
             lead.waSent ? 1 : 0,
             lead.notes || null,
@@ -188,3 +263,5 @@ class Lead {
 }
 
 module.exports = Lead;
+module.exports.LEAD_STATUSES = LEAD_STATUSES;
+module.exports.normalisePhone = normalisePhone;

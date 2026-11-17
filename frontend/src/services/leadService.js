@@ -44,6 +44,8 @@ export const leadService = {
   deleteMany: (ids) => post('/leads/bulk-delete', { ids }),
   markSent: (ids) => post('/leads/mark-sent', { ids }),
   clearAll: () => del('/leads/clear-all'),
+  // data: { type: 'Retail'|'Wholesale', area, name?, contactNumber? } → { lead, customer, created }
+  convertToCustomer: (id, data) => post(`/leads/${id}/convert`, data),
 
   // ── Templates ─────────────────────────────────────────────────────────────
   getTemplates: () => get('/lead-templates'),

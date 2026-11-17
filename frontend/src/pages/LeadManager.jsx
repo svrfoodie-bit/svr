@@ -9,8 +9,9 @@ import {
   Upload, Users, MessageCircle, Search, Trash2, CheckSquare, Square,
   Send, ExternalLink, X, FileSpreadsheet, AlertTriangle, CheckCircle,
   MapPin, RefreshCw, Download, Phone, Edit2, Save, BarChart3,
-  Clock, FileText, Bookmark, Plus, ChevronDown, TrendingUp,
+  Clock, FileText, Bookmark, Plus, ChevronDown, TrendingUp, UserPlus, UserCheck,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   leadService, waLink, normalisePhone,
@@ -107,12 +108,22 @@ const Pagination = ({ page, totalPages, onPage }) => {
 // ── Edit Modal ────────────────────────────────────────────────────────────────
 const EditModal = ({ contact, onSave, onClose }) => {
   const [form, setForm] = useState({ ...contact });
+  const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
-    await leadService.updateContact(contact.id, form);
-    onSave();
-    toast.success('Contact updated');
+    const { name, phone, address, location, category, notes, status } = form;
+    setSaving(true);
+    try {
+      // Send only editable fields; the server recomputes normalizedPhone from phone.
+      await leadService.updateContact(contact.id, { name, phone, address, location, category, notes, status });
+      onSave();
+      toast.success('Contact updated');
+    } catch {
+      // api interceptor already showed the error
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -152,9 +163,103 @@ const EditModal = ({ contact, onSave, onClose }) => {
         </div>
 
         <div className="flex gap-3 mt-5">
-          <button onClick={handleSave}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl font-semibold text-sm hover:from-primary-700 hover:to-primary-800 transition-all shadow">
-            <Save className="w-4 h-4" /> Save Changes
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl font-semibold text-sm hover:from-primary-700 hover:to-primary-800 transition-all shadow disabled:opacity-50">
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Changes
+          </button>
+          <button onClick={onClose}
+            className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-200 transition-all">
+            Cancel
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// ── Convert-to-Customer Modal ─────────────────────────────────────────────────
+// Creates a customer from the lead (or links to an existing customer with the
+// same number) and marks the lead Converted.
+const tenDigits = (raw = '') => {
+  const d = String(raw).replace(/\D/g, '');
+  return d.length >= 10 ? d.slice(-10) : d;
+};
+
+const ConvertModal = ({ contact, onDone, onClose }) => {
+  const [form, setForm] = useState({
+    name: contact.name || '',
+    contactNumber: tenDigits(contact.normalizedPhone || contact.phone),
+    area: contact.location && !contact.location.startsWith('http') ? contact.location : '',
+    type: 'Retail',
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleConvert = async () => {
+    if (!form.name.trim()) { toast.error('Customer name is required'); return; }
+    if (!/^[0-9]{10}$/.test(form.contactNumber)) { toast.error('Contact number must be exactly 10 digits'); return; }
+    if (!form.area.trim()) { toast.error('Area is required'); return; }
+    setSaving(true);
+    try {
+      const { customer, created } = await leadService.convertToCustomer(contact.id, {
+        ...form, name: form.name.trim(), area: form.area.trim(),
+      });
+      toast.success(created
+        ? `Customer ${customer.customerId} created`
+        : `Linked to existing customer ${customer.customerId} (${customer.name})`);
+      onDone();
+    } catch {
+      // api interceptor already showed the error
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 z-10">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-lg font-bold text-gray-900">Convert to Customer</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5 text-gray-500" /></button>
+        </div>
+        <p className="text-xs text-gray-500 mb-5">
+          Creates a customer from this lead and marks the lead Converted. If a customer already has this number, the lead is linked to that customer instead.
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Customer Name</label>
+            <input value={form.name} onChange={(e) => set('name', e.target.value)} maxLength={100}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Contact Number</label>
+            <input value={form.contactNumber} inputMode="numeric" maxLength={10}
+              onChange={(e) => set('contactNumber', e.target.value.replace(/\D/g, ''))}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+            <select value={form.type} onChange={(e) => set('type', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500/30">
+              <option value="Retail">Retail</option>
+              <option value="Wholesale">Wholesale</option>
+            </select>
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Area</label>
+            <input value={form.area} onChange={(e) => set('area', e.target.value)} placeholder="e.g. Hyderabad"
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400" />
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-5">
+          <button onClick={handleConvert} disabled={saving}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl font-semibold text-sm hover:from-emerald-700 hover:to-emerald-800 transition-all shadow disabled:opacity-50">
+            {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />} Convert
           </button>
           <button onClick={onClose}
             className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-200 transition-all">
@@ -181,8 +286,14 @@ const ManualEntryForm = ({ onSaved }) => {
       toast.error('Enter at least a name or phone number'); return;
     }
     setSaving(true);
-    const { imported, skipped } = await leadService.import([form], form.source, 'Manual Entry');
-    setSaving(false);
+    let skipped;
+    try {
+      ({ skipped } = await leadService.import([form], form.source, 'Manual Entry'));
+    } catch {
+      return; // api interceptor already showed the error
+    } finally {
+      setSaving(false);
+    }
     if (skipped > 0) { toast.error('This phone number already exists'); return; }
     toast.success('Contact added');
     if (andNew) setForm(EMPTY_FORM);
@@ -294,8 +405,14 @@ const ImportTab = ({ onImported, existingContacts = [] }) => {
     if (!mapping.phone) { toast.error('Map the Phone Number column first'); return; }
     setImporting(true);
     const mapped = applyMapping(rawRows, mapping);
-    const { imported, skipped } = await leadService.import(mapped, platform, file.name);
-    setImporting(false);
+    let imported, skipped;
+    try {
+      ({ imported, skipped } = await leadService.import(mapped, platform, file.name));
+    } catch {
+      return; // api interceptor already showed the error; keep the file so the user can retry
+    } finally {
+      setImporting(false);
+    }
     toast.success(`Imported ${imported}${skipped ? `, skipped ${skipped} duplicates` : ''}`);
     setFile(null); setRawRows([]); setHeaders([]); setMapping({}); setPreview([]); setAnalysis(null);
     leadService.getHistory().then(setHistory);
@@ -484,11 +601,12 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
   const [filterStatus, setFilterStatus]   = useState('');
   const [filterLocation, setFilterLocation] = useState('');
   const [filterWaSent, setFilterWaSent]   = useState('');
-  const [sortKey, setSortKey]             = useState('importedAt');
+  const [sortKey, setSortKey]             = useState('createdAt');
   const [sortDir, setSortDir]             = useState('desc');
   const [page, setPage]                   = useState(1);
   const [pageSize, setPageSize]           = useState(20);
   const [editContact, setEditContact]     = useState(null);
+  const [convertContact, setConvertContact] = useState(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const filtered = useMemo(() => {
@@ -534,18 +652,24 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
   const deleteSelected = async () => {
     if (!selectedIds.size) return;
     if (!confirm(`Delete ${selectedIds.size} contacts?`)) return;
-    await leadService.deleteMany([...selectedIds]);
-    setSelectedIds(new Set()); toast.success('Deleted'); onReload();
+    try {
+      await leadService.deleteMany([...selectedIds]);
+      setSelectedIds(new Set()); toast.success('Deleted');
+    } catch { /* toasted by api interceptor */ }
+    onReload();
   };
 
   const batchSetStatus = async (status) => {
-    await Promise.all([...selectedIds].map((id) => leadService.updateStatus(id, status)));
-    toast.success(`${selectedIds.size} contacts marked as ${status}`);
+    const results = await Promise.allSettled([...selectedIds].map((id) => leadService.updateStatus(id, status)));
+    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    if (ok === results.length) toast.success(`${ok} contacts marked as ${status}`);
+    else toast.error(`${ok} of ${results.length} contacts updated — the rest failed`);
     onReload();
   };
 
   const changeStatus = async (id, status) => {
-    await leadService.updateStatus(id, status); onReload();
+    try { await leadService.updateStatus(id, status); } catch { /* toasted by api interceptor */ }
+    onReload();
   };
 
   const exportContacts = () => {
@@ -554,7 +678,7 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
       Location: c.location, Category: c.category, Source: c.source,
       Status: c.status || 'New', 'Social / Notes': c.notes,
       'WA Sent': c.waSent ? 'Yes' : 'No',
-      'Imported On': fmtDate(c.importedAt),
+      'Imported On': fmtDate(c.createdAt),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -644,7 +768,7 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
                       { label: 'Category',       key: 'category' },
                       { label: 'Social / Notes', key: null },
                       { label: 'Status',         key: 'status' },
-                      { label: 'Imported',       key: 'importedAt' },
+                      { label: 'Imported',       key: 'createdAt' },
                       { label: 'Actions',        key: null },
                     ].map(({ label, key }) => (
                       <th key={label} className="py-3 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
@@ -681,7 +805,7 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-1.5">
                           <span className="font-mono text-xs text-gray-700">{c.phone}</span>
-                          <a href={`tel:+${c._phone}`}
+                          <a href={`tel:+${c.normalizedPhone || normalisePhone(c.phone)}`}
                             className="p-1 text-green-500 hover:bg-green-50 rounded-lg transition-colors" title="Call">
                             <Phone className="w-3.5 h-3.5" />
                           </a>
@@ -720,7 +844,7 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
                       </td>
                       {/* Imported date */}
                       <td className="py-3 px-3">
-                        <span className="text-xs text-gray-400 whitespace-nowrap">{fmtDate(c.importedAt)}</span>
+                        <span className="text-xs text-gray-400 whitespace-nowrap">{fmtDate(c.createdAt)}</span>
                       </td>
                       {/* Actions */}
                       <td className="py-3 px-3">
@@ -733,6 +857,17 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
                             className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="WhatsApp">
                             <MessageCircle className="w-3.5 h-3.5" />
                           </a>
+                          {c.customerId ? (
+                            <Link to={`/customers/edit/${c.customerId}`}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="View customer">
+                              <UserCheck className="w-3.5 h-3.5" />
+                            </Link>
+                          ) : (
+                            <button onClick={() => setConvertContact(c)}
+                              className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Convert to customer">
+                              <UserPlus className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -761,7 +896,10 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
                     <h3 className="text-lg font-bold text-gray-900 mb-2">Clear All Contacts?</h3>
                     <p className="text-sm text-gray-600 mb-4">This will permanently delete all contacts. This action cannot be undone.</p>
                     <div className="flex gap-3">
-                      <button onClick={async () => { await leadService.clearAll(); onReload(); toast.success('All contacts cleared'); setShowClearConfirm(false); }} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors">Clear All</button>
+                      <button onClick={async () => {
+                        try { await leadService.clearAll(); toast.success('All contacts cleared'); } catch { /* toasted */ }
+                        setShowClearConfirm(false); onReload();
+                      }} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors">Clear All</button>
                       <button onClick={() => setShowClearConfirm(false)} className="flex-1 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-semibold transition-colors">Cancel</button>
                     </div>
                   </div>
@@ -815,6 +953,14 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
             onSave={() => { setEditContact(null); onReload(); }} />
         )}
       </AnimatePresence>
+
+      {/* Convert modal */}
+      <AnimatePresence>
+        {convertContact && (
+          <ConvertModal contact={convertContact} onClose={() => setConvertContact(null)}
+            onDone={() => { setConvertContact(null); onReload(); }} />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -824,7 +970,7 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Campaign Detail View ──────────────────────────────────────────────────────
-const CampaignDetail = ({ campaign, contacts, onBack, onDeleted }) => {
+const CampaignDetail = ({ campaign, contacts, onBack, onDeleted, onChanged }) => {
   const [sentIds, setSentIds] = useState(new Set((campaign.sentIds || []).map(String)));
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -832,27 +978,36 @@ const CampaignDetail = ({ campaign, contacts, onBack, onDeleted }) => {
   const pending  = members.filter((c) => !sentIds.has(String(c.id)));
   const sent     = members.filter((c) => sentIds.has(String(c.id)));
   const allDone  = pending.length === 0;
-  const pct      = members.length ? Math.round((sentIds.size / members.length) * 100) : 0;
+  // Count only members that still exist — deleted leads stay in campaign.sentIds/contactIds.
+  const pct      = members.length ? Math.round((sent.length / members.length) * 100) : 0;
 
   const resolve  = (c) => (campaign.template || '').replace(/\{\{name\}\}/g, c.name || 'there');
 
   const openChat = async (c) => {
     const phone = c.normalizedPhone || c._phone || c.phone || '';
     window.open(waLink(phone, resolve(c)), '_blank');
-    const next = new Set([...sentIds, String(c.id)]);
-    setSentIds(next);
-    await leadService.markCampaignSent(campaign.id, c.id);
-    await leadService.markSent([c.id]);
-    await leadService.updateStatus(c.id, 'Contacted');
+    setSentIds((prev) => new Set([...prev, String(c.id)]));
+    try {
+      await leadService.markCampaignSent(campaign.id, c.id);
+      await leadService.markSent([c.id]);
+      // Don't move a lead backwards (e.g. Interested → Contacted).
+      if ((c.status || 'New') === 'New') await leadService.updateStatus(c.id, 'Contacted');
+    } catch {
+      // Not saved — show it as pending again so the user can retry.
+      setSentIds((prev) => { const n = new Set(prev); n.delete(String(c.id)); return n; });
+    }
+    onChanged?.();
   };
 
   const deleteCampaign = () => setShowDeleteConfirm(true);
 
   const confirmDeleteCampaign = async () => {
-    await leadService.deleteCampaign(campaign.id);
-    toast.success('Group deleted');
-    setShowDeleteConfirm(false);
-    onDeleted();
+    try {
+      await leadService.deleteCampaign(campaign.id);
+      toast.success('Group deleted');
+      setShowDeleteConfirm(false);
+      onDeleted();
+    } catch { setShowDeleteConfirm(false); }
   };
 
   return (
@@ -889,7 +1044,7 @@ const CampaignDetail = ({ campaign, contacts, onBack, onDeleted }) => {
       {/* Progress bar */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-soft p-4 space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-semibold text-gray-700">{sentIds.size} of {members.length} sent</span>
+          <span className="font-semibold text-gray-700">{sent.length} of {members.length} sent</span>
           <span className={`font-bold ${allDone ? 'text-green-600' : 'text-orange-500'}`}>{pct}%</span>
         </div>
         <div className="w-full bg-gray-100 rounded-full h-3">
@@ -981,10 +1136,11 @@ const WhatsAppTab = ({ contacts, selectedIds, setSelectedIds, onReload }) => {
   const [groupName, setGroupName]       = useState('');
   const [showCreate, setShowCreate]     = useState(false);
 
-  const loadCampaigns = () => leadService.getCampaigns().then(setCampaigns);
+  // Errors are toasted by the api interceptor; keep the last loaded lists.
+  const loadCampaigns = () => leadService.getCampaigns().then(setCampaigns).catch(() => {});
 
   useEffect(() => {
-    leadService.getTemplates().then(setTemplates);
+    leadService.getTemplates().then(setTemplates).catch(() => {});
     loadCampaigns();
   }, []);
 
@@ -997,11 +1153,14 @@ const WhatsAppTab = ({ contacts, selectedIds, setSelectedIds, onReload }) => {
   }, [companyName]);
 
   const selected = useMemo(() => contacts.filter((c) => selectedIds.has(c.id)), [contacts, selectedIds]);
+  const liveIds  = useMemo(() => new Set(contacts.map((c) => String(c.id))), [contacts]);
 
   const createGroup = async () => {
     if (!groupName.trim()) { toast.error('Enter a group name'); return; }
     if (selected.length === 0) { toast.error('Select contacts first from the Contacts tab'); return; }
-    await leadService.createCampaign(groupName.trim(), selected.map((c) => c.id), template);
+    try {
+      await leadService.createCampaign(groupName.trim(), selected.map((c) => c.id), template);
+    } catch { return; }
     await loadCampaigns();
     setGroupName(''); setShowCreate(false);
     toast.success(`Group "${groupName.trim()}" created with ${selected.length} contacts`);
@@ -1009,15 +1168,19 @@ const WhatsAppTab = ({ contacts, selectedIds, setSelectedIds, onReload }) => {
 
   const saveTemplate = async () => {
     if (!tplName.trim()) { toast.error('Enter a template name'); return; }
-    await leadService.saveTemplate(tplName.trim(), template);
-    setTemplates(await leadService.getTemplates());
+    try {
+      await leadService.saveTemplate(tplName.trim(), template);
+      setTemplates(await leadService.getTemplates());
+    } catch { return; }
     setTplName(''); setShowSaveTpl(false);
     toast.success('Template saved');
   };
 
   const deleteTemplate = async (id) => {
-    await leadService.deleteTemplate(id);
-    setTemplates(await leadService.getTemplates());
+    try {
+      await leadService.deleteTemplate(id);
+      setTemplates(await leadService.getTemplates());
+    } catch { /* toasted by api interceptor */ }
   };
 
   // ── Campaign detail view ──────────────────────────────────────────────────
@@ -1029,6 +1192,7 @@ const WhatsAppTab = ({ contacts, selectedIds, setSelectedIds, onReload }) => {
         contacts={contacts}
         onBack={() => setActiveCampaign(null)}
         onDeleted={() => { loadCampaigns(); setActiveCampaign(null); onReload(); }}
+        onChanged={() => { loadCampaigns(); onReload(); }}
       />
     );
   }
@@ -1104,9 +1268,9 @@ const WhatsAppTab = ({ contacts, selectedIds, setSelectedIds, onReload }) => {
             : <div className="space-y-2">
                 {templates.map((t) => (
                   <div key={t.id} className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl">
-                    <button onClick={() => setTemplate(t.message)} className="flex-1 text-left">
+                    <button onClick={() => setTemplate(t.message ?? t.content ?? '')} className="flex-1 text-left">
                       <p className="text-sm font-medium text-gray-700">{t.name}</p>
-                      <p className="text-xs text-gray-400 truncate">{t.message.slice(0, 60)}…</p>
+                      <p className="text-xs text-gray-400 truncate">{t.message ?? t.content ?? ''}</p>
                     </button>
                     <button onClick={() => deleteTemplate(t.id)} className="p-1 text-gray-400 hover:text-red-500">
                       <X className="w-3.5 h-3.5" />
@@ -1131,10 +1295,13 @@ const WhatsAppTab = ({ contacts, selectedIds, setSelectedIds, onReload }) => {
         ) : (
           <div className="divide-y divide-gray-50">
             {campaigns.map((cmp) => {
-              const total   = (cmp.contactIds || []).length;
-              const sentCnt = (cmp.sentIds || []).length;
+              // Ignore ids of leads deleted since the group was created.
+              const memberIds = (cmp.contactIds || []).map(String).filter((id) => liveIds.has(id));
+              const sentSet   = new Set((cmp.sentIds || []).map(String));
+              const total     = memberIds.length;
+              const sentCnt   = memberIds.filter((id) => sentSet.has(id)).length;
               const pct     = total ? Math.round((sentCnt / total) * 100) : 0;
-              const done    = sentCnt === total;
+              const done    = total > 0 && sentCnt === total;
               return (
                 <button key={cmp.id} onClick={() => setActiveCampaign(cmp)}
                   className="w-full flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors text-left">
@@ -1316,13 +1483,20 @@ const LeadManager = () => {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    const all = await leadService.getAll();
-    const m = {
-      sources: [...new Set(all.map((l) => l.source).filter(Boolean))],
-      categories: [...new Set(all.map((l) => l.category).filter(Boolean))],
-      locations: [...new Set(all.map((l) => l.location).filter(Boolean))],
-    };
-    setContacts(all); setMeta(m); setLoading(false);
+    try {
+      const all = await leadService.getAll();
+      const list = Array.isArray(all) ? all : [];
+      setContacts(list);
+      setMeta({
+        sources: [...new Set(list.map((l) => l.source).filter(Boolean))],
+        categories: [...new Set(list.map((l) => l.category).filter(Boolean))],
+        locations: [...new Set(list.map((l) => l.location).filter(Boolean))],
+      });
+    } catch {
+      // api interceptor already showed the error; keep the last loaded list
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { reload(); }, [reload]);

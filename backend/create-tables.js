@@ -311,7 +311,7 @@ const createTables = async () => {
         id INT PRIMARY KEY AUTO_INCREMENT,
         name VARCHAR(255),
         phone VARCHAR(20),
-        status ENUM('New', 'Contacted', 'Qualified', 'Converted', 'Lost') DEFAULT 'New',
+        status ENUM('New', 'Contacted', 'Interested', 'Not Interested', 'Converted') NOT NULL DEFAULT 'New',
         source VARCHAR(100),
         campaignId INT,
         waSent BOOLEAN DEFAULT 0,

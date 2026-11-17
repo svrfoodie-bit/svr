@@ -1,6 +1,14 @@
 const Lead = require('../models/Lead.model');
 const { LeadCampaign, LeadTemplate } = require('../models/LeadCampaign.model');
 
+const { LEAD_STATUSES } = Lead;
+
+const invalidStatus = (status) =>
+  status !== undefined && status !== null && !LEAD_STATUSES.includes(status);
+
+const rejectStatus = (res) =>
+  res.status(400).json({ success: false, message: `Status must be one of: ${LEAD_STATUSES.join(', ')}` });
+
 class LeadController {
   async getAll(req, res, next) {
     try {
@@ -33,7 +41,8 @@ class LeadController {
 
   async create(req, res, next) {
     try {
-      const id = await Lead.create(req.body);
+      if (invalidStatus(req.body.status)) return rejectStatus(res);
+      const id = await Lead.create({ ...req.body, createdBy: req.user?.id });
       const lead = await Lead.getById(id);
       res.status(201).json({ success: true, message: 'Lead created', data: lead });
     } catch (error) {
@@ -43,6 +52,7 @@ class LeadController {
 
   async update(req, res, next) {
     try {
+      if (invalidStatus(req.body.status)) return rejectStatus(res);
       const success = await Lead.update(req.params.id, req.body);
       if (!success) {
         return res.status(404).json({ success: false, message: 'Lead not found' });
@@ -104,6 +114,27 @@ class LeadController {
       next(error);
     }
   }
+
+  async convert(req, res, next) {
+    try {
+      const { name, type, area, contactNumber, address } = req.body;
+      const result = await Lead.convertToCustomer(req.params.id, {
+        name, type, area, contactNumber, address, createdBy: req.user?.id,
+      });
+      res.json({
+        success: true,
+        message: result.created
+          ? `Customer ${result.customer.customerId} created`
+          : `Linked to existing customer ${result.customer.customerId}`,
+        data: result,
+      });
+    } catch (error) {
+      if (error.status) {
+        return res.status(error.status).json({ success: false, message: error.message });
+      }
+      next(error);
+    }
+  }
 }
 
 class LeadCampaignController {
@@ -130,6 +161,9 @@ class LeadCampaignController {
     try {
       const { contactId } = req.body;
       const campaign = await LeadCampaign.markSent(req.params.id, contactId);
+      if (!campaign) {
+        return res.status(404).json({ success: false, message: 'Campaign not found' });
+      }
       res.json({ success: true, data: campaign });
     } catch (error) {
       next(error);
