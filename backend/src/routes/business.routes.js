@@ -252,11 +252,13 @@ router.get('/leads', authenticate, LeadController.getAll);
 router.get('/leads/:id', authenticate, LeadController.getById);
 router.post('/leads', authenticate, LeadController.create);
 router.put('/leads/:id', authenticate, LeadController.update);
+// Must stay above '/leads/:id', or "clear-all" is matched as an id.
+router.delete('/leads/clear-all', authenticate, LeadController.clearAll);
 router.delete('/leads/:id', authenticate, LeadController.delete);
 router.post('/leads/bulk-delete', authenticate, LeadController.deleteMany);
 router.post('/leads/bulk-import', authenticate, LeadController.bulkCreate);
 router.post('/leads/mark-sent', authenticate, LeadController.markSent);
-router.delete('/leads/clear-all', authenticate, LeadController.clearAll);
+router.post('/leads/:id/convert', authenticate, LeadController.convert);
 
 // ==================== LEAD CAMPAIGN ROUTES ====================
 router.get('/lead-campaigns', authenticate, LeadCampaignController.getAll);
