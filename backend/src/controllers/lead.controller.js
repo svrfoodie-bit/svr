@@ -9,6 +9,12 @@ const invalidStatus = (status) =>
 const rejectStatus = (res) =>
   res.status(400).json({ success: false, message: `Status must be one of: ${LEAD_STATUSES.join(', ')}` });
 
+// 'Converted' means a customer exists for this lead, so only convertToCustomer()
+// may set it, and a converted lead keeps it. Picking it by hand used to leave
+// "Converted" leads with no customer behind them.
+const USE_CONVERT = 'Use Convert to Customer to mark a lead Converted';
+const STATUS_LOCKED = 'This lead is already a customer; its status cannot be changed';
+
 class LeadController {
   async getAll(req, res, next) {
     try {
@@ -42,6 +48,9 @@ class LeadController {
   async create(req, res, next) {
     try {
       if (invalidStatus(req.body.status)) return rejectStatus(res);
+      if (req.body.status === 'Converted') {
+        return res.status(400).json({ success: false, message: USE_CONVERT });
+      }
       const id = await Lead.create({ ...req.body, createdBy: req.user?.id });
       const lead = await Lead.getById(id);
       res.status(201).json({ success: true, message: 'Lead created', data: lead });
@@ -53,6 +62,20 @@ class LeadController {
   async update(req, res, next) {
     try {
       if (invalidStatus(req.body.status)) return rejectStatus(res);
+      const { status } = req.body;
+      if (status !== undefined && status !== null) {
+        const current = await Lead.getById(req.params.id);
+        if (!current) {
+          return res.status(404).json({ success: false, message: 'Lead not found' });
+        }
+        if (current.customerId && status !== 'Converted') {
+          return res.status(400).json({ success: false, message: STATUS_LOCKED });
+        }
+        // Re-saving an unchanged status is fine (the edit form sends every field).
+        if (!current.customerId && status === 'Converted' && current.status !== 'Converted') {
+          return res.status(400).json({ success: false, message: USE_CONVERT });
+        }
+      }
       const success = await Lead.update(req.params.id, req.body);
       if (!success) {
         return res.status(404).json({ success: false, message: 'Lead not found' });

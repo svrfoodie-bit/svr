@@ -242,7 +242,8 @@ class Lead {
             lead.name || 'Unknown',
             raw || null,
             normalized || null,
-            LEAD_STATUSES.includes(lead.status) ? lead.status : 'New',
+            // 'Converted' needs a linked customer, which an import cannot create.
+            LEAD_STATUSES.includes(lead.status) && lead.status !== 'Converted' ? lead.status : 'New',
             lead.source || null,
             lead.waSent ? 1 : 0,
             lead.notes || null,
