@@ -11,6 +11,16 @@ export const STATUS_STYLE = {
   Converted: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 };
 
+// Statuses a user may pick by hand. 'Converted' is set only by Convert to
+// Customer (the server rejects it otherwise).
+export const MANUAL_STATUSES = LEAD_STATUSES.filter((s) => s !== 'Converted');
+
+// Options for a not-yet-converted lead's status picker. Older leads marked
+// 'Converted' by hand (no customer behind them) keep that value listed so the
+// picker shows their real status until it is changed.
+export const statusOptionsFor = (lead) =>
+  lead?.status === 'Converted' ? [...MANUAL_STATUSES, 'Converted'] : MANUAL_STATUSES;
+
 export const normalisePhone = (raw = '') => {
   let d = String(raw).replace(/\D/g, '');
   if (d.startsWith('0')) d = '91' + d.slice(1);

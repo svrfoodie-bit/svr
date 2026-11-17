@@ -317,11 +317,17 @@ const createTables = async () => {
         waSent BOOLEAN DEFAULT 0,
         notes TEXT,
         location VARCHAR(255),
+        address VARCHAR(255) DEFAULT NULL,
+        category VARCHAR(100) DEFAULT NULL,
+        normalizedPhone VARCHAR(20) DEFAULT NULL,
+        customerId INT DEFAULT NULL,
+        convertedAt TIMESTAMP NULL DEFAULT NULL,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         createdBy INT,
         INDEX(phone),
-        INDEX(status)
+        INDEX(status),
+        INDEX idx_leads_normalized_phone (normalizedPhone)
       )
     `);
     console.log('✓ Leads table created');
@@ -332,6 +338,9 @@ const createTables = async () => {
         id INT PRIMARY KEY AUTO_INCREMENT,
         name VARCHAR(255),
         description TEXT,
+        template TEXT DEFAULT NULL,
+        contactIds TEXT DEFAULT NULL,
+        sentIds TEXT DEFAULT NULL,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         createdBy INT
       )

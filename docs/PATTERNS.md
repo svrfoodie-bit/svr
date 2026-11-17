@@ -33,13 +33,13 @@ frontend/src/
 - **Frontend:** PascalCase `.jsx` pages/components (`frontend/src/pages/LeadManager.jsx`); camelCase `<domain>Service.js` (`frontend/src/services/leadService.js`); hooks `useX.js` (`frontend/src/hooks/useDebounce.js:4`).
 - **DB tables:** snake_case plural (`lead_campaigns`, `cashew_flow_x_*`). **Columns: camelCase** (`createdAt`, `isDeleted`, `normalizedPhone`) — `backend/create-tables.js:310`. Don't introduce snake_case columns.
 - **JSON fields:** camelCase, matching the columns.
-- **Controllers:** class, `module.exports = new XController()` — `backend/src/controllers/lead.controller.js:218`.
+- **Controllers:** class, `module.exports = new XController()` — `backend/src/controllers/auth.controller.js:80` (files with several controllers export an object of instances — `backend/src/controllers/lead.controller.js:241`).
 
 ## How a feature is structured (Supplier = cleanest reference)
 - Mount: `/api/v1` → `business.routes.js` — `backend/src/server.js:120` (CashewFlowX: `backend/src/server.js:117`, exports: `backend/src/server.js:123`)
 - Route: `authenticate, <xValidators>, validate, Controller.method` — `backend/src/routes/business.routes.js:119`; validators declared just above (`backend/src/routes/business.routes.js:112`)
 - Audited writes add `autoAudit('<table>')` — `backend/src/routes/business.routes.js:91`
-- Controller: `try { … res.json({ success, data }) } catch (e) { next(e) }` — `backend/src/controllers/lead.controller.js:47`
+- Controller: `try { … res.json({ success, data }) } catch (e) { next(e) }` — `backend/src/controllers/lead.controller.js:56`
 - Model: static async methods, `promisePool.query(sql, params)` — `backend/src/models/Supplier.model.js:34`
 - Frontend: page → `<domain>Service` object → `apiHelpers.get/post/put/del` → axios `api` — `frontend/src/services/apiHelpers.js:57`
 - Static paths before `/:id` (e.g. `/leads/clear-all`) — order matters in `business.routes.js`.
@@ -55,18 +55,18 @@ frontend/src/
 - **Schema changes:** add the next `backend/migrations/NNN_<slug>.sql` and run `npm run migrate` (`backend/scripts/migrate.js`, tracks `schema_migrations`). The runner passes SQL through `runPortableSql` (`backend/src/utils/schemaHelpers.js:93`), which makes `ADD COLUMN/INDEX IF NOT EXISTS` work on MySQL 8 — **never run migration SQL raw** against prod.
 - New tables: `CREATE TABLE IF NOT EXISTS … ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`, named FKs — `backend/migrations/012_cashew_flow_x.sql:1`.
 - ENUM changes: remap rows with `UPDATE` before `MODIFY COLUMN` (MySQL 8 strict mode errors where MariaDB silently blanks) — `backend/migrations/014_lead_manager_fixes.sql:8`.
-- `backend/create-tables.js` is the fresh-DB bootstrap (`npm run setup-db`) and is **not** linked to migrations. If you change a table it defines (users, leads, lead_campaigns…), mirror the change there too (inferred convention; currently drifts for `leads` — see CLAUDE.md).
+- `backend/create-tables.js` is the fresh-DB bootstrap (`npm run setup-db`) and is **not** linked to migrations. If you change a table it defines (users, leads, lead_campaigns…), mirror the change there too. Verify by building both tables in a throwaway DB and running the migration on top.
 
 ## API / interface contracts
-- Success `200 { success: true, data }`; create `201 { success: true, message, data }` — `backend/src/controllers/lead.controller.js:47`.
-- Not found `404 { success: false, message: '<X> not found' }` — `backend/src/controllers/lead.controller.js:34`.
+- Success `200 { success: true, data }`; create `201 { success: true, message, data }` — `backend/src/controllers/lead.controller.js:56`.
+- Not found `404 { success: false, message: '<X> not found' }` — `backend/src/controllers/lead.controller.js:40`.
 - Validation `400 { success: false, message, errors: [...] }` from `backend/src/middleware/validate.js`.
 - `backend/src/utils/responseHandler.js:3` has `success/created/…` helpers but most controllers inline `res.status().json()` — either is accepted; match the file you're in.
 - Frontend axios interceptor unwraps `response.data.data` — `frontend/src/services/api.js:40` — and `apiHelpers.unwrapResponse` unwraps again (`frontend/src/services/apiHelpers.js:50`). Don't return a payload whose own top-level key is `data`.
 
 ## Error handling
 - Controllers `next(error)`; central `errorHandler` maps `ValidationError`→400, `ER_DUP_ENTRY`→409, `ER_NO_REFERENCED_ROW_2`→400, else `err.statusCode || 500` — `backend/src/middleware/errorHandler.js:4-54`; mounted `backend/src/server.js:126-127`.
-- Prefer setting `err.statusCode` and calling `next(err)` over inline mapping (leads map `error.status` inline — `backend/src/controllers/lead.controller.js:132`; don't spread that).
+- Prefer setting `err.statusCode` and calling `next(err)` over inline mapping (leads map `error.status` inline — `backend/src/controllers/lead.controller.js:155`; don't spread that).
 - Frontend: interceptor toasts by status and sets `error.__toastHandled` — `frontend/src/services/api.js:70`; 401 logs out. Pages should not toast again for handled errors.
 
 ## Validation, config & secrets

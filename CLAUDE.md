@@ -29,7 +29,7 @@ Full house style: **[docs/PATTERNS.md](docs/PATTERNS.md)** — read before writi
 
 ## Project gotchas (verify before relying)
 - SQL must work on **both** MariaDB (local) and MySQL 8 strict (prod). Never run migration SQL raw against prod; the runner translates `IF NOT EXISTS` DDL (`backend/src/utils/schemaHelpers.js:93`).
-- `backend/create-tables.js` and `backend/migrations/` are separate schema paths; `leads` in create-tables lacks the columns migration 014 adds.
+- `backend/create-tables.js` and `backend/migrations/` are separate schema paths — a schema change to a bootstrap table must land in both.
 - Role checks are not enforced (`authorize` unused); demo users with known passwords are seeded on every boot (`backend/src/server.js:141`).
 - JWT expiry env mismatch: code reads `JWT_EXPIRY` (`backend/src/models/User.model.js:61`), `.env.example` says `JWT_EXPIRE`.
 - Two different WhatsApp integrations: Meta Cloud API (CashewFlowX) vs Twilio (automation).

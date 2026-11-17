@@ -15,7 +15,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   leadService, waLink, normalisePhone,
-  LEAD_STATUSES, STATUS_STYLE,
+  LEAD_STATUSES, STATUS_STYLE, MANUAL_STATUSES, statusOptionsFor,
 } from '../services/leadService';
 import useDebounce from '../hooks/useDebounce';
 import { useCompanyStore } from '../context/companyStore';
@@ -116,7 +116,10 @@ const EditModal = ({ contact, onSave, onClose }) => {
     setSaving(true);
     try {
       // Send only editable fields; the server recomputes normalizedPhone from phone.
-      await leadService.updateContact(contact.id, { name, phone, address, location, category, notes, status });
+      // A converted lead's status is locked, so it is not sent.
+      const data = { name, phone, address, location, category, notes };
+      if (!contact.customerId) data.status = status;
+      await leadService.updateContact(contact.id, data);
       onSave();
       toast.success('Contact updated');
     } catch {
@@ -155,10 +158,19 @@ const EditModal = ({ contact, onSave, onClose }) => {
 
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-            <select value={form.status || 'New'} onChange={(e) => set('status', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500/30">
-              {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            {contact.customerId ? (
+              <p className="px-3 py-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl">
+                Converted — this lead is a customer
+              </p>
+            ) : (
+              <select value={form.status || 'New'} onChange={(e) => set('status', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500/30">
+                {statusOptionsFor(contact).map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            )}
+            {!contact.customerId && (
+              <p className="mt-1 text-xs text-gray-400">To make this lead a customer, use the Convert to customer button.</p>
+            )}
           </div>
         </div>
 
@@ -660,10 +672,15 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
   };
 
   const batchSetStatus = async (status) => {
-    const results = await Promise.allSettled([...selectedIds].map((id) => leadService.updateStatus(id, status)));
+    // Converted leads are customers; their status is locked, so skip them.
+    const customerIds = new Set(contacts.filter((c) => c.customerId).map((c) => c.id));
+    const ids = [...selectedIds].filter((id) => !customerIds.has(id));
+    const skipped = selectedIds.size - ids.length;
+    const results = await Promise.allSettled(ids.map((id) => leadService.updateStatus(id, status)));
     const ok = results.filter((r) => r.status === 'fulfilled').length;
-    if (ok === results.length) toast.success(`${ok} contacts marked as ${status}`);
-    else toast.error(`${ok} of ${results.length} contacts updated — the rest failed`);
+    const note = skipped ? ` (${skipped} converted skipped)` : '';
+    if (ok === results.length) toast.success(`${ok} contacts marked as ${status}${note}`);
+    else toast.error(`${ok} of ${results.length} contacts updated — the rest failed${note}`);
     onReload();
   };
 
@@ -837,10 +854,16 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
                       </td>
                       {/* Status dropdown */}
                       <td className="py-3 px-3">
-                        <select value={c.status || 'New'} onChange={(e) => changeStatus(c.id, e.target.value)}
-                          className={`text-xs font-medium border rounded-full px-2 py-0.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-400 ${STATUS_STYLE[c.status || 'New']}`}>
-                          {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        {c.customerId ? (
+                          <span className={`inline-block text-xs font-medium border rounded-full px-2 py-0.5 ${STATUS_STYLE.Converted}`}>
+                            Converted
+                          </span>
+                        ) : (
+                          <select value={c.status || 'New'} onChange={(e) => changeStatus(c.id, e.target.value)}
+                            className={`text-xs font-medium border rounded-full px-2 py-0.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-400 ${STATUS_STYLE[c.status || 'New']}`}>
+                            {statusOptionsFor(c).map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        )}
                       </td>
                       {/* Imported date */}
                       <td className="py-3 px-3">
@@ -926,7 +949,7 @@ const ContactsTab = ({ contacts, meta, loading, onReload, onSendSelected, select
                 <CheckSquare className="w-4 h-4" />Status <ChevronDown className="w-3 h-3" />
               </button>
               <div className="absolute bottom-full mb-2 left-0 bg-white rounded-xl shadow-xl border border-gray-100 py-1 hidden group-hover:block min-w-[160px]">
-                {LEAD_STATUSES.map((s) => (
+                {MANUAL_STATUSES.map((s) => (
                   <button key={s} onClick={() => batchSetStatus(s)}
                     className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${STATUS_STYLE[s].split(' ')[0]}`} />
